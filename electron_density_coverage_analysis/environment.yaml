@@ -1,0 +1,7 @@
+name: ed-coverage-analysis
+channels:
+  - https://conda.anaconda.org/conda-forge
+dependencies:
+  - python==3.9.0
+  - pip
+  - gemmi==0.4.5

@@ -1,0 +1,13 @@
+.idea
+venv/
+*.txt
+*.csv
+*.cif
+*.gz
+*.html
+*.json
+*.log
+*.zip
+*.png
+__pycache__/
+HelperModule/__pycache__
