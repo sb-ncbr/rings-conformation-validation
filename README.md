@@ -58,24 +58,24 @@
    - **Windows Operating System**:
      - Make sure you have the .NET environment installed (version 4.0 and above). By default, they are on all up-to-date Windows operating systems.
      
-6. **Download the PDB copy**
-    - Download the pdb dataset archive from [HERE](https://doi.org/10.58074/hy79-qc22) and extract it into the folder of your choice on your computer
+### Download the PDB copy
+   * Download the pdb dataset archive from [HERE](https://doi.org/10.58074/hy79-qc22) and extract it into the folder of your choice on your computer
 
-7. **Download CCP4 files**
-    - Change the directory to <electron_density_coverage_analysis>
-    - Create a folder <ccp4> inside this directory
-    - Download the ccp4 archive from [HERE](https://doi.org/10.58074/hy79-qc22) and extract it into <ccp4> folder you have just created
+### Download CCP4 files
+   * Change the directory to "electron_density_coverage_analysis"
+   * Create a folder "ccp4" inside this directory
+   * Download the ccp4 archive from [HERE](https://doi.org/10.58074/hy79-qc22) and extract it into "ccp4" folder you have just created
     
-8. **Download Chemical Component Dictionary**
-    - Download components.cif.gz into the project root folder <rings-conformation-validation>. Do not extract the file from the archive.
+### Download Chemical Component Dictionary
+   * Download components.cif.gz into the project root folder "rings-conformation-validation". Do not extract the file from the archive.
 
 
 ### Executing program
 
 1. **Run PrepareDataset.py**:
-    - Navigate into project root folder <rings-conformation-validation>.
-    - Before proceeding, make sure you have downloaded the copy of the PDB into your local machine.
-    - Make sure you have components.cif.gz in your current working directory
+    - Navigate into project root folder "rings-conformation-validation".
+    - Before proceeding, make sure you have downloaded the copy of the PDB into your local machine. [Jump to instructions](#download-the-pdb-copy)
+    - Make sure you have components.cif.gz in your current working directory [Jump to instructions](#download-chemical-component-dictionary)
     - [PQ Command Line version](https://webchem.ncbr.muni.cz/Platform/PatternQuery) (last version 1.1.23.12.27) is included in this project.
       
         ```
@@ -100,13 +100,13 @@
         ```
         python ConfComparer.py -t validation_data/<ring>/templates -i validation_data/<ring>/filtered_ligands -o validation_data/<ring>/output
         ```
-5. **Run analysis of electron density coverage**:
+ 5. **Run analysis of electron density coverage**:
     - Change the directory to <electron_density_coverage_analysis>
     
         ```py
         cd electron_density_coverage_analysis
         ```
-    - Before proceeding, make sure you have downloaded the CCP4 files into <ccp4> folder
+    - Before proceeding, make sure you have downloaded the CCP4 files into "ccp4" folder. [Jump to instructions](#download-ccp4-files)
    
         ```
         python main.py validation_data
