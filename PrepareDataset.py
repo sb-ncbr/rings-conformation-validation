@@ -4,12 +4,15 @@ from HelperModule.helper_functions import unzip_file
 from HelperModule.constants import *
 import logging
 from gemmi import cif
+from multiprocessing import cpu_count
 from typing import Dict, List
 import json
 import subprocess
 import os
 import sys
 
+
+CPU_COUNT = cpu_count()
 
 def is_target_ring_in_name(ring: Ring, all_names: list[str]) -> bool:
 
@@ -57,7 +60,7 @@ def create_config_for_pq(path_to_pdb_local: str, ligands_dict: Dict[Ring, List[s
         "InputFolders": [path_to_pdb_local],
         "Queries": [],
         "StatisticsOnly": False,
-        "MaxParallelism": 8 #TODO:
+        "MaxParallelism": CPU_COUNT
     }
 
     for ring, ligands in ligands_dict.items():
