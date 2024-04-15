@@ -21,7 +21,7 @@
    - If you're not familiar with Git or GitHub, you can download the project as a ZIP archive.
      - [Download](https://github.com/sb-ncbr/rings-conformation-validation/archive/refs/heads/main.zip)
      - Once downloaded, extract the ZIP archive to a directory on your computer.
-     - Open a terminal or command propmt inside the project folder (rings-conformation-validation).
+     - Open a terminal or command prompt inside the project folder (rings-conformation-validation).
 
 2. **Install Python 3.10**: Download and install Python 3.10 from the official website: [Python Downloads](https://www.python.org/downloads/)
    
@@ -60,43 +60,41 @@
 
 ### Executing program
 
-**Step 1**. Run PrepareDataset.py. The script gets the data for all three types of the rings at once.
-It accepts one argument:
-        --pdb_local (-d): Path to the local PDB
+1. **Run PrepareDataset.py**:
+    - The script gets the data for all three types of the rings at once.
+    - It accepts one argument: --pdb_local (-d): Path to the local PDB
+    - PQ Command Line version (last version 1.1.23.12.27) is included in this project. [Source](https://webchem.ncbr.muni.cz/Platform/PatternQuery)
+      
+        ```
+        python PrepareDataset.py -d path/to/local/pdb -p PatternQuery_1.1.23.12.27b/WebChemistry.Queries.Service.exe
+        ```
+2. **Run FilterDataset.py**:
+    - It accepts one argument: --ring (-r): Ring type (cylohexane | cyclopentane | benzene)
 
-PQ Command Line version (last version 1.1.23.12.27) is included in this project. [Source](https://webchem.ncbr.muni.cz/Platform/PatternQuery)
+        ```
+        python FilterDataset.py -r <ring>
+        ```
+3. **Run CreateTemplates**:
+    - It accepts one argument: --ring (-r): Ring type (cylohexane | cyclopentane | benzene)
 
-```py
-python PrepareDataset.py -d path/to/local/pdb -p PatternQuery_1.1.23.12.27b/WebChemistry.Queries.Service.exe
-```
-**Step 2**. Run FilterDataset.py. It accepts one argument:
-        --ring (-r): Ring type (cylohexane | cyclopentane | benzene)
-
-```py
-python FilterDataset.py -r <ring>
-```
-**Step 3**. Run CreateTemplates. It accepts one argument:
-        --ring (-r): Ring type (cylohexane | cyclopentane | benzene)
-
-```py
-python CreateTemplates.py -r <ring>
-```
-**Step 4**. Run ConfComparer.py
-```py
-python ConfComparer.py -t validation_data/<ring>/templates -i validation_data/<ring>/filtered_ligands -o validation_data/<ring>/output
-```
-**Step 5**. Run analysis of electron density coverage:
-```
-cd electron_density_coverage_analysis
-python main.py validation_data
-```
-**Step 6**. Run RingAnalysisResult. It accepts one argument:
-        --ring (-r): Ring type (cylohexane | cyclopentane | benzene)
+        ```
+        python CreateTemplates.py -r <ring>
+        ```
+4. **Run ConfComparer.py**:
+        ```
+        python ConfComparer.py -t validation_data/<ring>/templates -i validation_data/<ring>/filtered_ligands -o validation_data/<ring>/output
+        ```
+5. **Run analysis of electron density coverage**:
+        ```
+        cd electron_density_coverage_analysis
+        python main.py validation_data
+        ```
+6. **Run RingAnalysisResult**:
+    - It accepts one argument: --ring (-r): Ring type (cylohexane | cyclopentane | benzene)
 * TODO: correct paths
-```
-python RingAnalysisiResult.py -r <ring>
-
-```
+        ```
+        python RingAnalysisiResult.py -r <ring>
+        ```
 
 ## License
 This project is licensed under the MIT License - see the [LICENSE](https://github.com/sb-ncbr/rings-conformation-validation/blob/main/LICENSE) file for details.

@@ -1,12 +1,11 @@
 import datetime
-import requests
+import logging
 import os
 import shutil
 from zipfile import ZipFile
 from HelperModule.Ring import Ring
 
 
-# TODO: fix bond checking and rewrite this function
 def are_bonds_correct(atom_names, bonds, ring: Ring):
     names_set = set(atom_names)
     metal_atoms = {"FE": 0, "MN": 0, "CO": 0, "RU": 0, "TI": 0, "ZR": 0, "NI": 0, "CR": 0}
@@ -48,14 +47,11 @@ def are_bonds_correct(atom_names, bonds, ring: Ring):
 
 
 def unzip_file(src: str, dst: str) -> None:
-    with ZipFile(src, "r") as zip_obj:
-        zip_obj.extractall(dst)
-    os.remove(src)
+    try:
+        with ZipFile(src, "r") as zip_obj:
+            zip_obj.extractall(dst)
+        os.remove(src)
+    except Exception as e:
+        logging.error(e, stack_info=True, exc_info=True)
 
 
-def download_components_dict() -> None:
-    local_filename = 'components.cif.gz'
-    url = "https://files.wwpdb.org/pub/pdb/data/monomers/components.cif.gz"
-    with requests.get(url, stream=True) as r:
-        with open(local_filename, 'wb') as f:
-            shutil.copyfileobj(r.raw, f)
