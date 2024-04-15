@@ -70,7 +70,7 @@
    * Download components.cif.gz into the project root folder "rings-conformation-validation". Do not extract the file from the archive.
 
 
-### Executing program
+## Executing program
 
 1. **Run PrepareDataset.py**:
     - Navigate into project root folder "rings-conformation-validation".
