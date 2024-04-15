@@ -57,41 +57,55 @@
    
    - **Windows Operating System**:
      - Make sure you have the .NET environment installed (version 4.0 and above). By default, they are on all up-to-date Windows operating systems.
+     
+6. **Download the PDB copy
+    - Copy the pdb dataset from [HERE](https://doi.org/10.58074/hy79-qc22) into the folder of your choice on your computer
+
+7. **Download CCP4 files
+    - Change the directory to <electron_density_coverage_analysis>
+    - Create a folder <ccp4> inside this directory
+    - Copy all the ccp4 files from [HERE](https://doi.org/10.58074/hy79-qc22) into <ccp4> folder
+
 
 ### Executing program
 
 1. **Run PrepareDataset.py**:
-    - The script gets the data for all three types of the rings at once.
-    - It accepts one argument: --pdb_local (-d): Path to the local PDB
-    - PQ Command Line version (last version 1.1.23.12.27) is included in this project. [Source](https://webchem.ncbr.muni.cz/Platform/PatternQuery)
+    - Before proceeding, make sure you have downloaded the copy of the PDB into your local machine. 
+    - [PQ Command Line version](https://webchem.ncbr.muni.cz/Platform/PatternQuery) (last version 1.1.23.12.27) is included in this project.
       
         ```
-        python PrepareDataset.py -d path/to/local/pdb -p PatternQuery_1.1.23.12.27b/WebChemistry.Queries.Service.exe
+        python PrepareDataset.py -d path/to/local/pdb
         ```
 2. **Run FilterDataset.py**:
-    - It accepts one argument: --ring (-r): Ring type (cylohexane | cyclopentane | benzene)
+    - It accepts one argument --ring (-r): Ring type (cylohexane | cyclopentane | benzene)
 
         ```
         python FilterDataset.py -r <ring>
         ```
 3. **Run CreateTemplates**:
-    - It accepts one argument: --ring (-r): Ring type (cylohexane | cyclopentane | benzene)
+    - It accepts one argument --ring (-r): Ring type (cylohexane | cyclopentane | benzene)
 
         ```
         python CreateTemplates.py -r <ring>
         ```
 4. **Run ConfComparer.py**:
+    - For benzene ring run the script twice, fisrt time normally, the second time use templates from cyclohexane
+    - TODO: correct text
+    
         ```
         python ConfComparer.py -t validation_data/<ring>/templates -i validation_data/<ring>/filtered_ligands -o validation_data/<ring>/output
         ```
 5. **Run analysis of electron density coverage**:
+    - Change the directory to <electron_density_coverage_analysis>
+    - Before proceeding, make sure you have downloaded the CCP4 files into <ccp4> folder
+   
         ```
         cd electron_density_coverage_analysis
         python main.py validation_data
         ```
 6. **Run RingAnalysisResult**:
-    - It accepts one argument: --ring (-r): Ring type (cylohexane | cyclopentane | benzene)
-* TODO: correct paths
+    - It accepts one argument --ring (-r): Ring type (cylohexane | cyclopentane | benzene)
+
         ```
         python RingAnalysisiResult.py -r <ring>
         ```
