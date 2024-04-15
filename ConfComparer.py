@@ -348,7 +348,7 @@ if __name__ == "__main__":
                              "tested molecule to be considered being in given conformation")
     parser.add_argument("-c", "--crossplatform_runner", type=str, default='',
                         help="command used to run SiteBinder executable (for Windows), typically "
-                             "'mono' of 'wine' on Unix-like systems; if specified, analysis will "
+                             "'mono' or 'wine' on Unix-like systems; if specified, analysis will "
                              "be executed as 'CROSS-PLATFORM_RUNNER PATH/TO/SB_EXECUTABLE "
                              "input.txt rmsd.csv pairings.csv'")
     parser.add_argument("-l", "--print_list", action="store_true",
