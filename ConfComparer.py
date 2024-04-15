@@ -49,9 +49,9 @@ class _Storage:
     templates_dir: Path = _script_folder.joinpath("templates")
     input_dir: Path = _script_folder.joinpath("input")
     output_dir: Path = _script_folder.joinpath("output")
-    SB_executable_path: Path = _script_folder.joinpath("SiteBinderCMD", "SiteBinderCMD.exe")
+    SB_executable_path: Path = _script_folder.joinpath("SB_batch", "SiteBinderCMD.exe")
     use_mono: bool = False
-    tolerance: float = .1
+    tolerance: float = 1.0
     print_list = False
     print_RMSD_chart = False
     print_summary = True

@@ -40,6 +40,9 @@ def extract_ligand_names(doc: cif.Document) -> Dict[Ring, List[str]]:
                     [synonyms.lower()]
 
         ligand_name = ligand_block.find_value('_chem_comp.id')
+        if len(ligand_name) > 3:
+            logging.warning(f"The ligand name is longer than allowed three charachters. Skipping {ligand_name}...")
+            continue
 
         if str(ligand_name) in ('PHE', 'TYR', 'TRP'):
             continue
@@ -112,7 +115,7 @@ def main(path_to_pdb_local: str, pq_cmd: str):
     logging.info("Creating configuration file for Pattern Query...")
     create_config_for_pq(path_to_pdb_local, ligands_dict)
     logging.info("Running Pattern Query...")
-    start_program(MAIN_DIR, pq_cmd)
+    start_program(MAIN_DIR, pq_cmd=PQ_CMD_DIR)
     
     logging.info('Unzipping the results from Pattern Query...')
     
@@ -126,8 +129,6 @@ if __name__ == "__main__":
     
     required.add_argument('-d', '--pdb_local', type=str,
                           help='Path to the local PDB')
-    required.add_argument('-p', '--pq_cmd', type=str,
-                          help='Path to the Pattern Query WebChemistry.Queries.Service.exe')
     
     args = parser.parse_args()
-    main(args.pdb_local, args.pq_cmd)
+    main(args.pdb_local)

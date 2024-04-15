@@ -1,10 +1,11 @@
 # Workflow for validation of rings' conformation in ligands
 
 ## Description
-* TODO:
+* TODO: update the link to the article!!!*
+* This repository contains the software which is a supplementary material for [this article](https://www.overleaf.com/project/65d8603c4a4af517eb1fd627).
 ## Getting Started
 
-1. **Clone the Project Repository**:
+1. **Clone the Project Repository (Recommended)**:
    - Open a terminal or command prompt.
    - Navigate to the directory where you want to clone the project.
    - Run:
@@ -15,6 +16,12 @@
      ```
      cd rings-conformation-validation
      ```
+   
+   **Alternative: Downloading the Project Archive**:
+   - If you're not familiar with Git or GitHub, you can download the project as a ZIP archive.
+     - [Download](https://github.com/sb-ncbr/rings-conformation-validation/archive/refs/heads/main.zip)
+     - Once downloaded, extract the ZIP archive to a directory on your computer.
+     - Open a terminal or command propmt inside the project folder (rings-conformation-validation).
 
 2. **Install Python 3.10**: Download and install Python 3.10 from the official website: [Python Downloads](https://www.python.org/downloads/)
    
@@ -53,63 +60,43 @@
 
 ### Executing program
 
-* Step 1. Run PrepareDataset.py. The script gets the data for all three types of the rings at once.
-It accepts two arguments:
+**Step 1**. Run PrepareDataset.py. The script gets the data for all three types of the rings at once.
+It accepts one argument:
         --pdb_local (-d): Path to the local PDB
-        --pq_cmd (-p): Path to the Pattern Query .exe file
 
-PQ Command Line version (last version 1.1.23.12.27) is included in this project.
-Source: https://webchem.ncbr.muni.cz/Platform/PatternQuery
+PQ Command Line version (last version 1.1.23.12.27) is included in this project. [Source](https://webchem.ncbr.muni.cz/Platform/PatternQuery)
 
 ```py
 python PrepareDataset.py -d path/to/local/pdb -p PatternQuery_1.1.23.12.27b/WebChemistry.Queries.Service.exe
 ```
-* Step 2. Run FilterDataset.py. It accepts one argument:
+**Step 2**. Run FilterDataset.py. It accepts one argument:
         --ring (-r): Ring type (cylohexane | cyclopentane | benzene)
 
 ```py
 python FilterDataset.py -r <ring>
 ```
-* Step 3. Run CreateTemplates. It accepts one argument:
+**Step 3**. Run CreateTemplates. It accepts one argument:
         --ring (-r): Ring type (cylohexane | cyclopentane | benzene)
 
 ```py
 python CreateTemplates.py -r <ring>
 ```
-* Step 4. Run ConfComparer.py
+**Step 4**. Run ConfComparer.py
 ```py
-python ConfComparer.py -t validation_data/<ring>/templates -i validation_data/<ring>/filtered_ligands -o validation_data/<ring>/output -e SB_batch/SiteBinderCMD.exe -d 1.0
+python ConfComparer.py -t validation_data/<ring>/templates -i validation_data/<ring>/filtered_ligands -o validation_data/<ring>/output
 ```
-* Step 5. Run analysis of electron density coverage:
+**Step 5**. Run analysis of electron density coverage:
 ```
 cd electron_density_coverage_analysis
-python main.py validation_data -m
+python main.py validation_data
 ```
-* Step 6. Run RingAnalysisResult. It accepts one argument:
+**Step 6**. Run RingAnalysisResult. It accepts one argument:
         --ring (-r): Ring type (cylohexane | cyclopentane | benzene)
 * TODO: correct paths
 ```
-cd ../validation_data/<ring>/output
 python RingAnalysisiResult.py -r <ring>
 
 ```
-## Help
-
-* TODO:
-```
-command to run if program contains helper info
-```
-
-## Authors
-
-Contributors names and contact info
-
-* TODO:
-
 
 ## License
-This project is licensed under the MIT License - see the LICENSE file for details.
-
-## Acknowledgments
-
-* TODO:
+This project is licensed under the MIT License - see the [LICENSE](https://github.com/sb-ncbr/rings-conformation-validation/blob/main/LICENSE) file for details.
