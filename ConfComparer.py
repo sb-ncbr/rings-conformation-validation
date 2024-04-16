@@ -236,7 +236,7 @@ class Analysis:
         # complex CSV table of RMSD values of every molecule with every conformation template
         with self.result_rmsd_chart_path.open("w") as f:
             # header with conformation names
-            f.write(";;")
+            f.write("Ligand_name;Ring_ID;")
             for conf_name, _ in self.conformations.items():
                 f.write(f"{conf_name};")
             f.write("\n")
