@@ -21,12 +21,12 @@ def extract_rmsd(tmp: str):
         for line in f.readlines():
             name, rmsd, *_ = line.split(',')
             new_line = ';'.join([name, rmsd])
-            out.write("".join([new_line, os.linesep]))
+            out.write("".join([new_line,'\n']))
 
 
 def sort_rmsd(tmp: str):
-    with open(os.path.join(tmp, 'extracted_rmsd.csv'), 'r', newline=os.linesep) as f, \
-            open(os.path.join(tmp, 'rmsd_sorted.csv'), 'w', newline=os.linesep) as out:
+    with open(os.path.join(tmp, 'extracted_rmsd.csv'), 'r', newline='\n') as f, \
+            open(os.path.join(tmp, 'rmsd_sorted.csv'), 'w', newline='\n') as out:
         csv1 = reader(f, delimiter=';', doublequote=False)
         next(csv1, None)
         csv_writer = writer(out, delimiter=';', escapechar='\\', doublequote=False)
@@ -70,7 +70,7 @@ def get_paths(ring: Ring, output_file: str, path_to_tmp_dir: str, main_workflow_
                 logging.error(f"Wrong filename format of {name}. Skipping...")
                 continue
             out.write("".join([os.path.join(main_workflow_output_dir, ring.name.lower(), FILTERED_DATA,
-                                            ligand_name, 'patterns', name + '.pdb'), os.linesep]))
+                                            ligand_name, 'patterns', name + '.pdb'), '\n']))
 
 
 def run_site_binder(sb_input: str, site_binder: str, tmp: str):
@@ -155,7 +155,7 @@ def create_conf_analyser_input(ring: Ring, paths_to_pdbs_filename: str,
                     continue
 
                 path_to_pdb = os.path.join(root, file)
-                paths.write("".join([path_to_pdb, os.linesep]))
+                paths.write("".join([path_to_pdb, '\n']))
 
                 ligand, atom_names = get_data_from_pdb(path_to_pdb, ring)
                 unique_lines.add((ligand, tuple(atom_names)))
@@ -176,9 +176,7 @@ def create_conf_analyser_input(ring: Ring, paths_to_pdbs_filename: str,
                 atoms.write("".join([ligand_name, ' ']))
                 for atom_name in ordered_atoms:
                     atoms.write("".join([atom_name.strip(), ' ']))
-                atoms.write(os.linesep)
-
-    shutil.copy2(atom_names_filename, "totottoto.txt")
+                atoms.write('\n')
 
     if len(unique_lines) == 0:
         logging.error("No input files for creating templates were found.")
@@ -249,7 +247,7 @@ def run_conf_analyser(ring: Ring, main_workflow_output_dir: str) -> None:
                         continue
 
                     file.write("".join([os.path.join(main_workflow_output_dir, ring.name.lower(), FILTERED_DATA,
-                                                     ligand_name, 'patterns', pdb), os.linesep]))
+                                                     ligand_name, 'patterns', pdb), '\n']))
 
             lines_count = len(result_dict[conf])
 
@@ -293,6 +291,8 @@ def main(ring: str, output_path: str):
     logging.basicConfig(level=logging.DEBUG,
                         format='%(asctime)s - %(levelname)s - %(message)s')
     run_conf_analyser(ring, main_workflow_output_dir)
+
+    logging.info(f"CreateTemplates has completed successfully for ring {ring.name.lower()}")
 
 
 if __name__ == "__main__":

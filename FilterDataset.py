@@ -72,7 +72,7 @@ def main(input_ring: str, output_path: str):
     logging.basicConfig(level=logging.DEBUG,
                         format='%(asctime)s - %(levelname)s - %(message)s')
 
-    logging.info(f"Running FilterDataset for the ring {ring}")
+    logging.info(f"Running FilterDataset for the ring {ring.lower()}")
 
     output_dir = os.path.join(current_ring_path, 'filtered_ligands')
     run_filter(input_dir, Ring[ring], output_dir)
