@@ -47,7 +47,7 @@ def remove_outliers(lines_count, tmp: str):
         file.truncate()
 
 
-def get_paths(ring: Ring, output_file: str, path_to_tmp_dir: str):
+def get_paths(ring: Ring, output_file: str, path_to_tmp_dir: str, main_workflow_output_dir: str):
     """Reads 'rmsd_sorted.csv' input file and creates (updates) output file, containing paths to pdb files from the read file.
     Example of line in the input file:
     CVM_2xqu_52;0.004
@@ -59,6 +59,7 @@ def get_paths(ring: Ring, output_file: str, path_to_tmp_dir: str):
         output_file (str): name of the output file
         path_to_tmp_dir (str): path to temp directory
     """
+
     input_file = os.path.join(path_to_tmp_dir, 'rmsd_sorted.csv')
     with open(input_file, 'r') as in_file, open(output_file, 'w') as out:
 
@@ -68,7 +69,7 @@ def get_paths(ring: Ring, output_file: str, path_to_tmp_dir: str):
             if ligand_name is None:
                 logging.error(f"Wrong filename format of {name}. Skipping...")
                 continue
-            out.write("".join([os.path.join(MAIN_DIR, ring.name.lower(), FILTERED_DATA,
+            out.write("".join([os.path.join(main_workflow_output_dir, ring.name.lower(), FILTERED_DATA,
                                             ligand_name, 'patterns', name + '.pdb'), os.linesep]))
 
 
@@ -141,10 +142,12 @@ def correct_atoms_order(bonds: set[tuple[str, str]]) -> tuple[str]:
     return tuple(result)
 
 
-def create_conf_analyser_input(ring: Ring, paths_to_pdbs_filename: str, atom_names_filename: str) -> None | int:
+def create_conf_analyser_input(ring: Ring, paths_to_pdbs_filename: str,
+                               atom_names_filename: str, ligands_dir: str) -> None | int:
+
     unique_lines: set[tuple[str, tuple[str]]] = set()
     with open(paths_to_pdbs_filename, 'w') as paths:
-        ligands_dir = os.path.join(MAIN_DIR, ring.name.lower(), FILTERED_DATA)
+
         for root, _, files in os.walk(ligands_dir):
             for file in files:
 
@@ -159,7 +162,7 @@ def create_conf_analyser_input(ring: Ring, paths_to_pdbs_filename: str, atom_nam
 
         document = cif.read(DEFAULT_DICT_NAME)
 
-        with open(atom_names_filename, 'w') as atoms:
+        with open(atom_names_filename, 'w', encoding='utf-8') as atoms:
             for ligand_name, atom_names in unique_lines:
                 ligand_block = document.find_block(ligand_name)
                 if ligand_block is None:
@@ -172,8 +175,10 @@ def create_conf_analyser_input(ring: Ring, paths_to_pdbs_filename: str, atom_nam
 
                 atoms.write("".join([ligand_name, ' ']))
                 for atom_name in ordered_atoms:
-                    atoms.write("".join([atom_name, ' ']))
+                    atoms.write("".join([atom_name.strip(), ' ']))
                 atoms.write(os.linesep)
+
+    shutil.copy2(atom_names_filename, "totottoto.txt")
 
     if len(unique_lines) == 0:
         logging.error("No input files for creating templates were found.")
@@ -201,12 +206,14 @@ def extract_letters_before_underscore(string: str):
     return None
 
 
-def run_conf_analyser(ring: Ring) -> None:
+def run_conf_analyser(ring: Ring, main_workflow_output_dir: str) -> None:
     # Prepare input files
     with tempfile.TemporaryDirectory() as tmp:
         paths_to_pdbs_path = os.path.join(tmp, 'paths_to_pdbs.txt')
         atom_names_path = os.path.join(tmp, 'atom_names.txt')
-        return_code = create_conf_analyser_input(ring, paths_to_pdbs_path, atom_names_path)
+
+        ligands_dir = os.path.join(main_workflow_output_dir, ring.name.lower(), FILTERED_DATA)
+        return_code = create_conf_analyser_input(ring, paths_to_pdbs_path, atom_names_path, ligands_dir)
 
         # no input data
         if return_code == -1:
@@ -230,7 +237,7 @@ def run_conf_analyser(ring: Ring) -> None:
                 continue
 
             logging.info(f'Processing conformation {conf}...')
-            path_to_conf_template_dir = os.path.join(MAIN_DIR, ring.name.lower(), TEMPLATES_DIR, conf)
+            path_to_conf_template_dir = os.path.join(main_workflow_output_dir, ring.name.lower(), TEMPLATES_DIR, conf)
             os.makedirs(path_to_conf_template_dir, exist_ok=True)
 
             paths_to_pdbs_for_curr_conf = os.path.join(tmp, f"{conf}.txt")
@@ -241,7 +248,7 @@ def run_conf_analyser(ring: Ring) -> None:
                         logging.error(f"Wrong filename format of {pdb}. Skipping...")
                         continue
 
-                    file.write("".join([os.path.join(MAIN_DIR, ring.name.lower(), FILTERED_DATA,
+                    file.write("".join([os.path.join(main_workflow_output_dir, ring.name.lower(), FILTERED_DATA,
                                                      ligand_name, 'patterns', pdb), os.linesep]))
 
             lines_count = len(result_dict[conf])
@@ -256,8 +263,8 @@ def run_conf_analyser(ring: Ring) -> None:
                 sort_rmsd(tmp)
                 remove_outliers(lines_count, tmp)
 
-                # file <paths_to_pdbs_for_curr_conf> is beeing updated by get_paths()
-                get_paths(ring, paths_to_pdbs_for_curr_conf, tmp)
+                # file <paths_to_pdbs_for_curr_conf> is being updated by get_paths()
+                get_paths(ring, paths_to_pdbs_for_curr_conf, tmp, main_workflow_output_dir)
                 with open(paths_to_pdbs_for_curr_conf, 'r') as f:
                     lines_count = len(f.readlines())
 
@@ -270,17 +277,22 @@ def run_conf_analyser(ring: Ring) -> None:
                 logging.info(f"Found template {path_to_template_pdb} --> {conf.lower()}.pdb")
 
 
-def main(ring: str):
+def main(ring: str, output_path: str):
+
+    main_workflow_output_dir = os.path.join(output_path, MAIN_DIR)
+    if not os.path.exists(main_workflow_output_dir):
+        sys.exit(f"The directory {os.path.abspath(main_workflow_output_dir)} does not exist.")
+
     if ring.upper() not in Ring.__members__.keys():
         sys.exit(f"Supported rings are: {[e.name for e in Ring]}")
 
     ring: Ring = Ring[ring.upper()]
 
-    os.makedirs(os.path.join(MAIN_DIR, ring.name.lower(), TEMPLATES_DIR), exist_ok=True)
+    os.makedirs(os.path.join(main_workflow_output_dir, ring.name.lower(), TEMPLATES_DIR), exist_ok=True)
 
     logging.basicConfig(level=logging.DEBUG,
                         format='%(asctime)s - %(levelname)s - %(message)s')
-    run_conf_analyser(ring)
+    run_conf_analyser(ring, main_workflow_output_dir)
 
 
 if __name__ == "__main__":
@@ -290,6 +302,8 @@ if __name__ == "__main__":
     required.add_argument('-r', '--ring', required=True, type=str,
                           help=f'Choose the target ring type. Currently supported:{os.linesep}'
                                f'{[e.name for e in Ring]}')
+    required.add_argument('-o', '--output', type=str, required=True,
+                          help='Path to the output directory. Should be the same as in the previous step.')
     args = parser.parse_args()
 
-    main(args.ring)
+    main(args.ring, args.output)

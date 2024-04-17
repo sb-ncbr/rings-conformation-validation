@@ -104,11 +104,14 @@ def start_program(results_folder, pq_cmd):
     command.extend([results_folder, PQ_CONFIG])
 
     try:
-        process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        stdout, stderr = process.communicate()
+        process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, universal_newlines=True)
 
-        if stderr:
-            logging.error(stderr.decode())
+        for stdout_line in iter(process.stdout.readline, ''):
+            logging.info(stdout_line.strip())
+        for stderr_line in iter(process.stderr.readline, ''):
+            logging.error(stderr_line.strip())
+
+        process.wait()
 
     except subprocess.SubprocessError as e:
         logging.error(f"Error executing command: {e}")
@@ -117,8 +120,11 @@ def start_program(results_folder, pq_cmd):
 
 
 def main(path_to_pdb_local: str, output_path: str):
+    logging.basicConfig(level=logging.DEBUG,
+                        format='%(asctime)s - %(levelname)s - %(message)s')
 
     if not os.path.exists(path_to_pdb_local):
+        logging.info(f"CWD is {os.getcwd()}")
         sys.exit(f"The directory {os.path.abspath(path_to_pdb_local)} does not exist.")
 
     if not os.path.exists(PQ_CMD):
@@ -126,9 +132,6 @@ def main(path_to_pdb_local: str, output_path: str):
 
     if os.name == 'posix' and not is_mono_installed():
         sys.exit("Mono is not installed")
-
-    logging.basicConfig(level=logging.DEBUG,
-                        format='%(asctime)s - %(levelname)s - %(message)s')
 
     main_workflow_output_dir = os.path.join(output_path, MAIN_DIR)
     try:
@@ -166,10 +169,10 @@ def main(path_to_pdb_local: str, output_path: str):
     create_config_for_pq(path_to_pdb_local, ligands_dict)
 
     logging.info("Running Pattern Query...")
-    start_program(MAIN_DIR, pq_cmd=PQ_CMD)
+    start_program(main_workflow_output_dir, pq_cmd=PQ_CMD)
 
     logging.info('Unzipping the results from Pattern Query...')
-    path_to_results = os.path.join(MAIN_DIR, 'result')
+    path_to_results = os.path.join(main_workflow_output_dir, 'result')
     unzip_file(os.path.join(path_to_results, 'result.zip'), path_to_results)
 
 

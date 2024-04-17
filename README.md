@@ -51,12 +51,12 @@ This repository contains software workflow from the article by Bučeková et al.
    - Make sure your virtual environment is activated.
    - Run:
      ```
-     pip install gemmi==0.6.5 pandas==2.2.1
+     pip install gemmi==0.6.5 pandas==2.2.2
 
      ```
      
 ### Download the PDB copy
-   * Download the pdb dataset archive from [HERE](https://doi.org/10.58074/hy79-qc22) and extract it into the folder of your choice on your computer
+   * Download the pdb dataset archive from [HERE](https://doi.org/10.58074/hy79-qc22) and extract it into the folder of your choice on your computer (but not into the project folder)
 
 ### Download CCP4 files
    * Change the directory to "electron_density_coverage_analysis"
@@ -68,6 +68,8 @@ This repository contains software workflow from the article by Bučeková et al.
 
 
 ## Executing program
+**Windows**
+    - Usage: run_workflow.bat <path\to\local\pdb> <path\to\output\dir>
 
 1. **Run PrepareDataset.py**:
     - Navigate into project root folder "rings-conformation-validation".
