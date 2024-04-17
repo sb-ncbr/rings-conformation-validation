@@ -243,7 +243,7 @@ def run_conf_analyser(ring: Ring, main_workflow_output_dir: str) -> None:
             paths_to_pdbs_for_curr_conf = os.path.join(tmp, f"{conf}.txt")
             with open(paths_to_pdbs_for_curr_conf, 'w') as file:
                 for pdb in result_dict[conf]:
-                    ligand_name = extract_letters_before_underscore(pdb)
+                    ligand_name = extract_letters_before_underscore(os.path.basename(pdb))
                     if ligand_name is None:
                         logging.error(f"Wrong filename format of {pdb}. Skipping...")
                         continue
