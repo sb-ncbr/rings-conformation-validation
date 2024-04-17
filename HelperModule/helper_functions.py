@@ -52,6 +52,16 @@ def unzip_file(src: str, dst: str) -> None:
             zip_obj.extractall(dst)
         os.remove(src)
     except Exception as e:
-        logging.error(e, stack_info=True, exc_info=True)
+        logging.error(f"An error occurred during extraction: {e}")
+
+
+def is_mono_installed():
+    # Check if 'mono' executable exists in any of the directories in the PATH environment variable
+    for path in os.environ.get('PATH', '').split(os.pathsep):
+        mono_executable = os.path.join(path, 'mono')
+        if os.path.exists(mono_executable):
+            return True
+    return False
+
 
 
