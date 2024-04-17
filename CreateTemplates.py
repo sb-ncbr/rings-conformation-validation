@@ -146,39 +146,44 @@ def create_conf_analyser_input(ring: Ring, paths_to_pdbs_filename: str,
                                atom_names_filename: str, ligands_dir: str) -> None | int:
 
     unique_lines: set[tuple[str, tuple[str]]] = set()
-    with open(paths_to_pdbs_filename, 'w') as paths:
+    with open(paths_to_pdbs_filename, 'wb') as paths:
 
         for root, _, files in os.walk(ligands_dir):
             for file in files:
 
                 if not file.endswith('.pdb'):
                     continue
-
                 path_to_pdb = os.path.join(root, file)
-                paths.write("".join([path_to_pdb, os.linesep]))
+                data = "".join([path_to_pdb, os.linesep])
+                bytes_data = data.encode()
+
+                paths.write(bytes_data)
 
                 ligand, atom_names = get_data_from_pdb(path_to_pdb, ring)
                 unique_lines.add((ligand, tuple(atom_names)))
 
-        document = cif.read(DEFAULT_DICT_NAME)
+    document = cif.read(DEFAULT_DICT_NAME)
 
-        with open(atom_names_filename, 'w', encoding='utf-8') as atoms:
-            for ligand_name, atom_names in unique_lines:
-                ligand_block = document.find_block(ligand_name)
-                if ligand_block is None:
-                    logging.error(
-                        f"The block {ligand_name} was not found in {DEFAULT_DICT_NAME}. Skipping...{os.linesep}")
+    with open(atom_names_filename, 'wb') as atoms_file:
+        for ligand_name, atom_names in unique_lines:
+            ligand_block = document.find_block(ligand_name)
+            if ligand_block is None:
+                logging.error(
+                    f"The block {ligand_name} was not found in {DEFAULT_DICT_NAME}. Skipping...{os.linesep}")
 
-                ordered_atoms = validate_atoms_order(ligand_block, atom_names, ring.atom_number)
-                if ordered_atoms is None:
-                    continue
+            ordered_atoms = validate_atoms_order(ligand_block, atom_names, ring.atom_number)
+            if ordered_atoms is None:
+                continue
 
-                atoms.write("".join([ligand_name, ' ']))
-                for atom_name in ordered_atoms:
-                    atoms.write("".join([atom_name.strip(), ' ']))
-                atoms.write(os.linesep)
+            ligand_data = "".join([ligand_name, ' '])
+            ligand_bytes_data = ligand_data.encode()
+            atoms_file.write(ligand_bytes_data)
 
-    shutil.copy2(atom_names_filename, "totottoto.txt")
+            atom_names_combined = " ".join(atom.strip() for atom in ordered_atoms)
+
+            combined_data = "".join([atom_names_combined, os.linesep])
+            combined_bytes_data = combined_data.encode()
+            atoms_file.write(combined_bytes_data)
 
     if len(unique_lines) == 0:
         logging.error("No input files for creating templates were found.")
@@ -243,7 +248,7 @@ def run_conf_analyser(ring: Ring, main_workflow_output_dir: str) -> None:
             paths_to_pdbs_for_curr_conf = os.path.join(tmp, f"{conf}.txt")
             with open(paths_to_pdbs_for_curr_conf, 'w') as file:
                 for pdb in result_dict[conf]:
-                    ligand_name = extract_letters_before_underscore(pdb)
+                    ligand_name = extract_letters_before_underscore(os.path.basename(pdb))
                     if ligand_name is None:
                         logging.error(f"Wrong filename format of {pdb}. Skipping...")
                         continue
