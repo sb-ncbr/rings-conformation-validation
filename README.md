@@ -3,7 +3,7 @@
 ## Description
 This repository contains software workflow from the article by Bučeková et al. If you found this workflow, or any of its parts, to be useful, please cite the following article:
 
-BUČEKOVÁ Gabriela, Viktoriia DOSHCHENKO, Aliaksei CHARESHNEU, Jana PORUBSKÁ, Michal PAJTINKA, Michal OLEKSIK, Vladimír HORSKÝ, and Radka SVOBODOVÁ. *In preparation*. 2024.
+>BUČEKOVÁ Gabriela, Viktoriia DOSHCHENKO, Aliaksei CHARESHNEU, Jana PORUBSKÁ, Michal PAJTINKA, Michal OLEKSIK, Vladimír HORSKÝ, and Radka SVOBODOVÁ. *In preparation*. 2024.
 
 ## Getting Started
 
