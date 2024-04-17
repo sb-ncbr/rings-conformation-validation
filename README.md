@@ -1,8 +1,10 @@
 # Workflow for validation of rings' conformation in ligands
 
 ## Description
-* TODO: update the link to the article!!!*
-* This repository contains the software which is a supplementary material for [this article](https://www.overleaf.com/project/65d8603c4a4af517eb1fd627).
+This repository contains software workflow from the article by Bučeková et al. If you found this workflow, or any of its parts, to be useful, please cite the following article:
+
+BUČEKOVÁ Gabriela, Viktoriia DOSHCHENKO, Aliaksei CHARESHNEU, Jana PORUBSKÁ, Michal PAJTINKA, Michal OLEKSIK, Vladimír HORSKÝ, and Radka SVOBODOVÁ. *In preparation*. 2024.
+
 ## Getting Started
 
 1. **Clone the Project Repository (Recommended)**:
