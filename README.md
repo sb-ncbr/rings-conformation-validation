@@ -5,6 +5,14 @@ This repository contains software workflow from the article by Bučeková et al.
 
 >BUČEKOVÁ Gabriela, Viktoriia DOSHCHENKO, Aliaksei CHARESHNEU, Jana PORUBSKÁ, Michal PAJTINKA, Michal OLEKSIK, Vladimír HORSKÝ, and Radka SVOBODOVÁ. *In preparation*. 2024.
 
+## Prerequisites
+- Python 3.10 available in the PATH environment
+  - a binary installer is available from [here](https://www.python.org/downloads/release/python-31011/)
+- .NET 4.0 or newer (Windows only)
+- Mono 6.12.0 or newer (non-Windows operating systems only)
+  - installation instructions are available [here](https://www.mono-project.com/download/stable)
+- git (or a compatible alternative) (only if you wish to clone the workflow's repository)
+
 ## Getting Started
 
 1. **Clone the Project Repository (Recommended)**:
@@ -19,17 +27,12 @@ This repository contains software workflow from the article by Bučeková et al.
      cd rings-conformation-validation
      ```
    
-   **Alternative: Downloading the Project Archive**:
-   - If you're not familiar with Git or GitHub, you can download the project as a ZIP archive.
-     - [Download](https://github.com/sb-ncbr/rings-conformation-validation/archive/refs/heads/main.zip)
-     - Once downloaded, extract the ZIP archive to a directory on your computer.
-     - Open a terminal or command prompt inside the project folder (rings-conformation-validation).
+   **Alternative: Download the workflow repository as a ZIP archive**:
+   - If you're not familiar with Git or GitHub, you can download the whole workflow repository as a ZIP archive from [here](https://github.com/sb-ncbr/rings-conformation-validation/archive/refs/heads/main.zip).
+   - Once downloaded, extract the ZIP archive to a directory on your computer.
+   - Open a terminal or command prompt inside the project folder (rings-conformation-validation).
 
-2. **Install Python 3.10**: Download and install Python 3.10 from the official website: [Python Downloads](https://www.python.org/downloads/)
-   
-   **Windows and macOS**: Ensure to check the option to add Python to the PATH during installation.
-
-3. **Set up Virtual Environment (Optional but Recommended)**:
+2. **Set up Virtual Environment (Optional but Recommended)**:
     - Create a virtual environment named `.venv`:
      ```
      python -m venv .venv
@@ -44,21 +47,13 @@ This repository contains software workflow from the article by Bučeková et al.
        source .venv/bin/activate
        ```
 
-4. **Install Required Packages**:
+3. **Install Required Packages**:
    - Make sure your virtual environment is activated.
    - Run:
      ```
      pip install gemmi==0.6.5 pandas==2.2.1
 
      ```
-
-5. **Install External Tools**:
-   - **Non-Windows Operating System (Linux and macOS)**:
-     - Make sure you have installed Mono. You can download and install it from [Mono Project](http://mono-project.com).
-     - Current LST version is 6.12.0 
-   
-   - **Windows Operating System**:
-     - Make sure you have the .NET environment installed (version 4.0 and above). By default, they are on all up-to-date Windows operating systems.
      
 ### Download the PDB copy
    * Download the pdb dataset archive from [HERE](https://doi.org/10.58074/hy79-qc22) and extract it into the folder of your choice on your computer
