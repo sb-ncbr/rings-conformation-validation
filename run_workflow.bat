@@ -21,8 +21,7 @@ for %%r in (%CYCLOPENTANE%, %CYCLOHEXANE%) do (
     python ConfComparer.py -t !TEMPLATES_PATH! -i !FILTERED_LIGANDS_PATH! -o !OUTPUT_PATH!
 )
 
-python FilterDataset.py -r !BENZENE! -o !OUTPUT_FOLDER!
-python CreateTemplates.py -r !BENZENE! -o !OUTPUT_FOLDER!
+python FilterDataset.py -r !BENZENE! -o !OUTPUT_FOLDER! -i !INPUT_DATA_FOLDER!
 
 set "TEMPLATES_PATH=!OUTPUT_FOLDER!\validation_data\!CYCLOHEXANE!\templates"
 set "FILTERED_LIGANDS_PATH=!OUTPUT_FOLDER!\validation_data\!BENZENE!\filtered_ligands"
