@@ -41,7 +41,7 @@ def extract_ligand_names(doc: cif.Document) -> Dict[Ring, List[str]]:
             ligand_name = ligand_block.find_value('_chem_comp.id')
 
             if len(ligand_name) > 3:
-                logging.warning(f"The ligand name is longer than allowed three charachters. Skipping {ligand_name}...")
+                logging.warning(f"The ligand name is longer than allowed three characters. Skipping {ligand_name}...")
                 continue
 
             if str(ligand_name) in ('PHE', 'TYR', 'TRP'):
@@ -56,7 +56,7 @@ def extract_ligand_names(doc: cif.Document) -> Dict[Ring, List[str]]:
             continue
 
     if not all(extracted_names.values()):
-        logging.info('No rings found. Exiting...')
+        logging.warning('No rings found. Exiting...')
         sys.exit(1)
 
     return extracted_names
@@ -114,43 +114,54 @@ def start_program(results_folder, pq_cmd):
         process.wait()
 
     except subprocess.SubprocessError as e:
-        logging.error(f"Error executing command: {e}")
+        logging.error(f"Error executing PatternQuery: {e}")
+        sys.exit(1)
     except Exception as e:
         logging.error(f"An unexpected error occurred: {e}")
+        sys.exit(1)
 
 
-def main(path_to_pdb_local: str, output_path: str):
+def main(input_path: str, output_path: str):
     logging.basicConfig(level=logging.DEBUG,
-                        format='%(asctime)s - %(levelname)s - %(message)s')
+                        format='%(asctime)s - %(levelname)s - %(message)s',
+                        filename="validation_workflow.log",
+                        filemode='a'
+                        )
+    logging.info('Starting PrepareDataset...')
 
-    if not os.path.exists(path_to_pdb_local):
-        logging.info(f"CWD is {os.getcwd()}")
-        sys.exit(f"The directory {os.path.abspath(path_to_pdb_local)} does not exist.")
+    path_to_local_pdb = os.path.join(input_path, 'pdb_copy_local')
+    if not os.path.exists(path_to_local_pdb):
+        logging.error(f"The directory {os.path.abspath(path_to_local_pdb)} does not exist. Exiting...")
+        sys.exit(1)
 
     if not os.path.exists(PQ_CMD):
-        sys.exit(f"The file {os.path.abspath(PQ_CMD)} was not found")
+        logging.error(f"The file {os.path.abspath(PQ_CMD)} was not found. Exiting...")
+        sys.exit(1)
 
     if os.name == 'posix' and not is_mono_installed():
-        sys.exit("Mono is not installed")
+        logging.error(f"The Mono package is not installed. Exiting...")
+        sys.exit(1)
 
     main_workflow_output_dir = os.path.join(output_path, MAIN_DIR)
     try:
         os.makedirs(main_workflow_output_dir)
     except FileExistsError:
-        sys.exit(f"The directory {os.path.abspath(main_workflow_output_dir)} already exists.")
+        logging.error(f"The directory {os.path.abspath(main_workflow_output_dir)} already exists. Exiting...")
+        sys.exit(1)
     except PermissionError:
-        sys.exit(
-            f"You do not have the necessary permissions to create the directory"
-            f"{os.path.abspath(main_workflow_output_dir)}.")
+        logging.error(f"The directory {os.path.abspath(main_workflow_output_dir)} is not writable. Exiting...")
+        sys.exit(1)
     except Exception as e:
         logging.error(f"An unexpected error occurred: {e}")
         sys.exit(1)
 
+    path_to_comp_dict = os.path.join(input_path, DEFAULT_DICT_NAME)
     logging.info('Reading components dictionary...')
     try:
-        document = cif.read(DEFAULT_DICT_NAME)
+        document = cif.read(path_to_comp_dict)
     except FileNotFoundError:
-        sys.exit(f"The file {os.path.abspath(DEFAULT_DICT_NAME)} does not exist.")
+        logging.error(f"The file {os.path.abspath(path_to_comp_dict)} was not found. Exiting...")
+        sys.exit(1)
     except Exception as e:
         logging.error(f"An unexpected error occurred: {e}")
         sys.exit(1)
@@ -166,24 +177,25 @@ def main(path_to_pdb_local: str, output_path: str):
     #             output.write(ligand + '\n')
 
     logging.info("Creating configuration file for Pattern Query...")
-    create_config_for_pq(path_to_pdb_local, ligands_dict)
+    create_config_for_pq(path_to_local_pdb, ligands_dict)
 
-    logging.info("Running Pattern Query...")
+    logging.info(f"Running Pattern Query on CPU count: {CPU_COUNT}...")
     start_program(main_workflow_output_dir, pq_cmd=PQ_CMD)
 
     logging.info('Unzipping the results from Pattern Query...')
     path_to_results = os.path.join(main_workflow_output_dir, 'result')
     unzip_file(os.path.join(path_to_results, 'result.zip'), path_to_results)
+    logging.info('PrepareDataset has completed successfully')
 
 
 if __name__ == "__main__":
     parser = ArgumentParser(description="Get the dataset of rings using the PatternQuery")
     required = parser.add_argument_group('required named arguments')
 
-    required.add_argument('-d', '--pdb_local', type=str, required=True,
-                          help='Path to the local PDB')
+    required.add_argument('-i', '--input', type=str, required=True,
+                          help='Path to the directory with input data (local pdb, ccp4 files, etc.)')
     required.add_argument('-o', '--output', type=str, required=True,
                           help='Path to the output directory')
 
     args = parser.parse_args()
-    main(args.pdb_local, args.output)
+    main(args.input, args.output)

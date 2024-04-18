@@ -1,6 +1,6 @@
 @echo off
 setlocal enabledelayedexpansion
-set "LOCAL_PDB_PATH=%~1"
+set "INPUT_DATA_FOLDER=%~1"
 set "OUTPUT_FOLDER=%~2"
 
 set "CYCLOPENTANE=cyclopentane"
@@ -8,10 +8,10 @@ set "CYCLOHEXANE=cyclohexane"
 set "BENZENE=benzene"
 
 
-python PrepareDataset.py -d !LOCAL_PDB_PATH! -o !OUTPUT_FOLDER!
+python PrepareDataset.py -i !INPUT_DATA_FOLDER! -o !OUTPUT_FOLDER!
 
 for %%r in (%CYCLOPENTANE%, %CYCLOHEXANE%) do (
-    python FilterDataset.py -r %%~r -o !OUTPUT_FOLDER!
+    python FilterDataset.py -r %%~r -o !OUTPUT_FOLDER! -i !INPUT_DATA_FOLDER!
     python CreateTemplates.py -r %%~r -o !OUTPUT_FOLDER!
 
     set "TEMPLATES_PATH=!OUTPUT_FOLDER!\validation_data\%%~r\templates"

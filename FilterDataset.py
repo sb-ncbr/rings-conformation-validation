@@ -10,10 +10,9 @@ from HelperModule.helper_functions import are_bonds_correct
 from HelperModule.constants import *
 
 
-def run_filter(input_dir: str, ring: Ring, output_dir: str) -> None:
+def run_filter(input_dir: str, ring: Ring, output_dir: str, document: cif.Document) -> None:
     total = 0
     target_count = 0
-    document = cif.read(DEFAULT_DICT_NAME)
 
     for root, _, files in os.walk(input_dir):
         for file in files:
@@ -25,7 +24,7 @@ def run_filter(input_dir: str, ring: Ring, output_dir: str) -> None:
             ligand_block = document.find_block(ligand)
 
             if ligand_block is None:
-                logging.warning(f"ligand_block is None for {ligand}")
+                logging.warning(f"Ligand_block is None for {ligand}")
                 continue
 
             atom_bonds = get_bonds_from_cif(ligand_block)
@@ -45,37 +44,47 @@ def run_filter(input_dir: str, ring: Ring, output_dir: str) -> None:
                 shutil.copy(filepath, new_name_path)
                 target_count += 1
 
-    logging.info(f"{target_count} {ring.name.lower()} patterns were found.")
+    logging.info(f"[{ring.name.capitalize()}]: {target_count} patterns were found.")
 
 
-def main(input_ring: str, output_path: str):
+def main(ring: str, output_path: str, input_path: str):
+    logging.basicConfig(level=logging.DEBUG,
+                        format='%(asctime)s - %(levelname)s - %(message)s',
+                        filename="validation_workflow.log",
+                        filemode='a')
+
+    ring = ring.upper()
+    if ring not in Ring.__members__.keys():
+        logging.error(f"Ring {ring} is not a valid Ring. Currently supported: {[e.name for e in Ring]} Exiting...")
+        sys.exit(1)
+
+    logging.info(f"[{ring.capitalize()}]: Starting FilterDataset...")
 
     main_workflow_output_dir = os.path.join(output_path, MAIN_DIR)
     if not os.path.exists(main_workflow_output_dir):
-        sys.exit(f"The directory {os.path.abspath(main_workflow_output_dir)} does not exist.")
+        logging.error(f"The directory {os.path.abspath(main_workflow_output_dir)} does not exist. Exiting...")
+        sys.exit(1)
 
-    if not os.path.exists(DEFAULT_DICT_NAME):
-        sys.exit(f"No component dictionary <{DEFAULT_DICT_NAME}> was found in the current directory. Exiting...")
+    path_to_comp_dict = os.path.join(input_path, DEFAULT_DICT_NAME)
+    logging.info('Reading components dictionary...')
+    if not os.path.exists(path_to_comp_dict):
+        logging.error(f"The file {path_to_comp_dict} does not exist. Exiting...")
+        sys.exit(1)
 
-    ring = input_ring.upper()
-    if ring not in Ring.__members__.keys():
-        logging.error(f"Ring {ring} is not a valid Ring.")
-        sys.exit(f'Check ring name! Currently supported: {[e.name for e in Ring]}')
+    current_ring_path = os.path.join(main_workflow_output_dir, ring.lower())
 
-    current_ring_path = os.path.join(main_workflow_output_dir, input_ring)
+    # that is the output dir from the previous script (previous step)
+    dir_with_patterns = os.path.join(main_workflow_output_dir, "result", ring.lower())
 
-    input_dir = os.path.join(main_workflow_output_dir, "result", input_ring)
+    if not os.path.exists(dir_with_patterns) or not os.listdir(dir_with_patterns):
+        logging.error(f'The directory "{dir_with_patterns}" does not exist or is empty')
+        sys.exit(1)
 
-    if not os.path.exists(input_dir) or not os.listdir(input_dir):
-        sys.exit(f'The input directory "{input_dir}" does not exist or is empty')
+    dir_for_filtered_patterns = os.path.join(current_ring_path, 'filtered_ligands')
 
-    logging.basicConfig(level=logging.DEBUG,
-                        format='%(asctime)s - %(levelname)s - %(message)s')
-
-    logging.info(f"Running FilterDataset for the ring {ring.lower()}")
-
-    output_dir = os.path.join(current_ring_path, 'filtered_ligands')
-    run_filter(input_dir, Ring[ring], output_dir)
+    document = cif.read(path_to_comp_dict)
+    run_filter(dir_with_patterns, Ring[ring], dir_for_filtered_patterns, document)
+    logging.info(f'[{ring.capitalize()}]: FilterDataset has completed successfully')
 
 
 if __name__ == '__main__':
@@ -88,7 +97,9 @@ if __name__ == '__main__':
                                f' {[e.name for e in Ring]}')
     required.add_argument('-o', '--output', type=str, required=True,
                           help='Path to the output directory. Should be the same as in the previous step.')
+    required.add_argument('-i', '--input', type=str, required=True,
+                          help='Path to the directory with input data (local pdb, ccp4 files, etc.)')
 
     args = parser.parse_args()
 
-    main(args.ring, args.output)
+    main(args.ring, args.output, args.input)

@@ -276,23 +276,29 @@ def run_conf_analyser(ring: Ring, main_workflow_output_dir: str) -> None:
 
 
 def main(ring: str, output_path: str):
+    logging.basicConfig(level=logging.DEBUG,
+                        format='%(asctime)s - %(levelname)s - %(message)s',
+                        filename="validation_workflow.log",
+                        filemode='a'
+                        )
+
+    if ring.upper() not in Ring.__members__.keys():
+        logging.error(f"Ring {ring} is not a valid Ring. Currently supported: {[e.name for e in Ring]} Exiting...")
+        sys.exit(1)
+
+    ring: Ring = Ring[ring.upper()]
+    logging.info(f"[{ring.name.capitalize()}]: Starting CreateTemplates...")
 
     main_workflow_output_dir = os.path.join(output_path, MAIN_DIR)
     if not os.path.exists(main_workflow_output_dir):
-        sys.exit(f"The directory {os.path.abspath(main_workflow_output_dir)} does not exist.")
-
-    if ring.upper() not in Ring.__members__.keys():
-        sys.exit(f"Supported rings are: {[e.name for e in Ring]}")
-
-    ring: Ring = Ring[ring.upper()]
+        logging.error(f"The directory {os.path.abspath(main_workflow_output_dir)} does not exist.")
+        sys.exit(1)
 
     os.makedirs(os.path.join(main_workflow_output_dir, ring.name.lower(), TEMPLATES_DIR), exist_ok=True)
 
-    logging.basicConfig(level=logging.DEBUG,
-                        format='%(asctime)s - %(levelname)s - %(message)s')
     run_conf_analyser(ring, main_workflow_output_dir)
 
-    logging.info(f"CreateTemplates has completed successfully for ring {ring.name.lower()}")
+    logging.info(f"[{ring.name.capitalize()}]: CreateTemplates has completed successfully")
 
 
 if __name__ == "__main__":
