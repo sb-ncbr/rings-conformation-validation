@@ -1,15 +1,16 @@
 #!/usr/bin/python
 import argparse
 import csv
+import os
 import sys
 from enum import Enum, auto
 import mmap
+import logging
 from pathlib import Path
 from shutil import which
 import subprocess
 import tempfile
 from typing import Callable, Dict, List, Optional
-import warnings
 
 ##############################
 # CONSTANTS AND CUSTOM TYPES #
@@ -64,6 +65,7 @@ class MoleculeBase:
     """
     Represents any molecule, carries info about name and path to source file
     """
+
     def __init__(self,
                  molecule_file_path: Optional[Path],
                  name_case: MoleculeNameCase = MoleculeNameCase.NO_CHANGE):
@@ -120,6 +122,7 @@ class Molecule(MoleculeBase):
     Represents particular molecule, carries info about name, path to source file and computed
     RMSD values for various templates.
     """
+
     def __init__(self, molecule_file_path: Optional[Path]):
         super().__init__(molecule_file_path)
         if self.extension.upper() == ".PDB" and molecule_file_path:
@@ -158,35 +161,35 @@ class Analysis:
 
     def execute(self):
         # initialize conformations
-        print("Loading templates...", file=sys.stderr)
+        logging.info("Loading templates...")
         for f in _Storage.templates_dir.rglob("*"):
             if f.suffix.upper() not in _SUPPORTED_EXTENSIONS:
                 continue
             conf = Conformation(f.resolve())
             self.conformations[conf.get_name()] = conf
-        print("Templates loaded.", file=sys.stderr)
+        logging.info("Templates loaded.")
 
         # initialize molecules
-        print("Loading molecules...", file=sys.stderr)
+        logging.info("Loading molecules...")
         for f in _Storage.input_dir.rglob("*"):
             if f.suffix.upper() not in _SUPPORTED_EXTENSIONS:
                 continue
             mol = Molecule(f.resolve())
             self.molecules[mol.get_name()] = mol
-        print("Molecules loaded.", file=sys.stderr)
+        logging.info("Molecules loaded.")
 
         # work in a temporary folder where all the intermediate files can be stored during
         # the execution
         with tempfile.TemporaryDirectory() as tmp_dir:
             for conf_name, conf in self.conformations.items():
-                print(f"Starting SB analysis of conformation {conf_name}...", file=sys.stderr)
+                logging.info(f"Starting SB analysis of conformation {conf_name}...")
                 conf_folder = Path(tmp_dir).joinpath(conf_name)
                 conf_folder.mkdir(mode=0o777)
 
                 # create list of paths of molecules to be tested, add path of template on the first
                 # line (it will be used as reference and discarded by SiteBinder)
                 conf_input_file = conf_folder.joinpath(f"sb_input.list")
-                print(f"Generating input file {conf_input_file}...", file=sys.stderr)
+                logging.info(f"Generating input file {conf_input_file}...")
                 with conf_input_file.open("w") as f:
                     for file_path in [conf.path] + [m.path for m in self.molecules.values()]:
                         f.write(f"{file_path}\n")
@@ -199,7 +202,7 @@ class Analysis:
                                     conf_input_file, rmsd_output_file, pairing_output_file)
                                 if arg]
 
-                print(f"Starting SiteBinder...", file=sys.stderr)
+                logging.info(f"Starting SiteBinder...")
                 sb_process = subprocess.Popen(command_args, stdout=subprocess.PIPE,
                                               stderr=subprocess.PIPE, shell=False)
                 sb_process.wait()
@@ -207,8 +210,8 @@ class Analysis:
                 sb_process.stdout.close()
 
                 if stdout or stderr or sb_process.returncode != 0:
-                    print(f"error within processing conformation '{conf_name}', SiteBinder message:"
-                          f"\nstdout: {stdout}\nstderr: {stderr}\n---", file=sys.stderr)
+                    logging.error(f"Error within processing conformation '{conf_name}', SiteBinder message:"
+                                  f"\nstdout: {stdout}\nstderr: {stderr}\n---")
                     sys.exit(1)
 
                 # process results for this conformation
@@ -220,10 +223,10 @@ class Analysis:
                     # rest of the file are actual data, one entry per line
                     for entry in list(csv.reader(f)):
                         self._process_entry(conf_name, entry)
-                print(f"Analysis of conformation {conf_name} finished.", file=sys.stderr)
+                logging.info(f"Analysis of conformation {conf_name} finished.")
             self._generate_result_files()
-            print(file=sys.stderr)
-        self._print_results()
+            # print(file=sys.stderr)
+        # self._print_results()
 
     def _generate_result_files(self):
         # simple list of molecules and theirs conformations
@@ -263,9 +266,9 @@ class Analysis:
         # generate summary
         with self.result_summary_path.open("w") as f:
             for conf_name in list(self.conformations) + [
-                    Conformation.get_none_conformation().get_name()]:
+                Conformation.get_none_conformation().get_name()]:
                 f.write(f"{conf_name:<13} {conf_absolute_numbers.get(conf_name, 0): 4} "
-                        f"{conf_absolute_numbers.get(conf_name, 0) * 100 /total_num:.2f}%\n")
+                        f"{conf_absolute_numbers.get(conf_name, 0) * 100 / total_num:.2f}%\n")
             f.write(f"{'TOTAL':<13} {total_num: 4} 100%")
 
     def _print_results(self):
@@ -285,19 +288,19 @@ class Analysis:
             name, rmsd_1, rmsd_2, matched_count, a_size, b_size = entry
             rmsd = f"{rmsd_1}.{rmsd_2}"
         else:
-            warnings.warn(f"Skipping entry '{entry}' as the list contains unexpected number "
-                          f"of members that cannot be matched to expected header "
-                          f"'{self._expected_result_header}'")
+            logging.warning(f"Skipping entry '{entry}' as the list contains unexpected number "
+                            f"of members that cannot be matched to expected header "
+                            f"'{self._expected_result_header}'")
             return
         if int(matched_count) != int(a_size) != int(b_size):
-            warnings.warn(f"Molecule '{name}' is not of the same type as template "
-                          f"of conformation '{conf_name}' (they probably differ in "
-                          f"size or contain incompatible atoms.")
+            logging.warning(f"Molecule '{name}' is not of the same type as template "
+                            f"of conformation '{conf_name}' (they probably differ in "
+                            f"size or contain incompatible atoms.")
         try:
             self.molecules[name].update_conformation_map(conf_name, float(rmsd))
         except KeyError:
-            warnings.warn(f"Attempt to update unknown molecule '{name}' with RMSD value '{rmsd}' "
-                          f"for conformation '{conf_name}'")
+            logging.warning(f"Attempt to update unknown molecule '{name}' with RMSD value '{rmsd}' "
+                            f"for conformation '{conf_name}'")
 
     @staticmethod
     def _prepare_environment():
@@ -305,19 +308,29 @@ class Analysis:
 
         # input and template directories must exist as well as SB executable
         if not _Storage.input_dir.is_dir():
-            error_messages.append(f"Input directory '{_Storage.input_dir}' was not found.")
+            msg = f"Input directory '{_Storage.input_dir}' was not found."
+            error_messages.append(msg)
+            logging.error(msg)
         if not _Storage.templates_dir.is_dir():
-            error_messages.append(f"Templates directory '{_Storage.templates_dir}' was not found.")
+            msg = f"Templates directory '{_Storage.templates_dir}' was not found."
+            error_messages.append(msg)
+            logging.error(msg)
         if not _Storage.SB_executable_path.is_file():
-            error_messages.append(f"SB executable '{_Storage.SB_executable_path}' not found.")
+            msg = f"SB executable '{_Storage.SB_executable_path}' not found."
+            error_messages.append(msg)
+            logging.error(msg)
         if _Storage.crossplatform_runner and not which(_Storage.crossplatform_runner):
-            error_messages.append(f"'{_Storage.crossplatform_runner}' command unavailable.")
+            msg = f"'{_Storage.crossplatform_runner}' command unavailable."
+            error_messages.append(msg)
+            logging.error(msg)
 
         # output directory can already exist or be created
         try:
             _Storage.output_dir.mkdir(mode=0o777, parents=True, exist_ok=True)
         except (OSError, FileNotFoundError):
-            error_messages.append("Output directory was not found and cannot be created.")
+            msg = "Output directory was not found and cannot be created."
+            error_messages.append(msg)
+            logging.error(msg)
 
         if error_messages:
             raise ConfComparerError(" ".join(error_messages))
@@ -373,5 +386,14 @@ if __name__ == "__main__":
     _Storage.print_RMSD_chart = args.print_RMSD_chart
     _Storage.print_summary = not args.print_summary_off
 
+    logging.basicConfig(level=logging.DEBUG,
+                        format='%(asctime)s - %(levelname)s - %(message)s',
+                        filename="validation_workflow.log",
+                        filemode='a')
+    logging.info(f"Starting ConfComparer on input data: {_Storage.input_dir}...\n"
+                 f"Templates used: {_Storage.templates_dir}")
+
     analysis = Analysis()
     analysis.execute()
+
+    logging.info(f'ConfComparer has completed successfully')
