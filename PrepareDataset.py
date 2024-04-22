@@ -103,22 +103,39 @@ def start_program(results_folder, pq_cmd):
     command = commands.get(os.name, [])
     command.extend([results_folder, PQ_CONFIG])
 
-    try:
-        process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, universal_newlines=True)
+    pq_process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, universal_newlines=True, shell=False)
+    pq_process.wait()
+    stdout, stderr = [stream.strip() for stream in pq_process.communicate()]
+    pq_process.stdout.close()
 
-        for stdout_line in iter(process.stdout.readline, ''):
-            logging.info(stdout_line.strip())
-        for stderr_line in iter(process.stderr.readline, ''):
-            logging.error(stderr_line.strip())
-
-        process.wait()
-
-    except subprocess.SubprocessError as e:
-        logging.error(f"Error executing PatternQuery: {e}")
+    #TODO
+    if stderr or pq_process.returncode != 0:
+        logging.error(f"Error while running Pattern Query, PQ message:"
+                      f"\nstdout: {stdout}\nstderr: {stderr}\n---")
         sys.exit(1)
-    except Exception as e:
-        logging.error(f"An unexpected error occurred: {e}")
-        sys.exit(1)
+    if stdout:
+        sys.stdout.write(stdout)
+
+    # try:
+    #     process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, universal_newlines=True)
+    #
+    #     for stdout_line in iter(process.stdout.readline, ''):
+    #         logging.info(stdout_line.strip())
+    #     for stderr_line in iter(process.stderr.readline, ''):
+    #         if stderr_line.strip():
+    #             logging.error(stderr_line.strip())
+    #             # logging.error(e, stack_info=True, exc_info=True) ###
+    #             raise Exception
+    #             # sys.exit(1)
+    #
+    #     process.wait()
+    #
+    # except subprocess.SubprocessError as e:
+    #     logging.error(f"Error executing PatternQuery: {e}")
+    #     # sys.exit(1)
+    # except Exception as e:
+    #     logging.error(f"An unexpected error occurred: {e}")
+    #     # sys.exit(1)
 
 
 def main(input_path: str, output_path: str):
@@ -180,11 +197,23 @@ def main(input_path: str, output_path: str):
     create_config_for_pq(path_to_local_pdb, ligands_dict)
 
     logging.info(f"Running Pattern Query on CPU count: {CPU_COUNT}...")
+    # try:
     start_program(main_workflow_output_dir, pq_cmd=PQ_CMD)
+    # except Exception:
+    #     sys.exit(1)
 
+    # Unzipping the results from Pattern Query
     logging.info('Unzipping the results from Pattern Query...')
     path_to_results = os.path.join(main_workflow_output_dir, 'result')
-    unzip_file(os.path.join(path_to_results, 'result.zip'), path_to_results)
+    try:
+        unzip_file(os.path.join(path_to_results, 'result.zip'), path_to_results)
+    except FileNotFoundError as e:
+        logging.error(f"[FileNotFoundError]: {e}. Exiting...")
+        sys.exit(1)
+    except Exception as e:
+        logging.error(f"[Unknown Error]: {e}. Exiting...")
+        sys.exit(1)
+
     logging.info('PrepareDataset has completed successfully')
 
 

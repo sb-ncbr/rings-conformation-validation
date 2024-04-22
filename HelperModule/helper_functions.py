@@ -48,6 +48,9 @@ def are_bonds_correct(atom_names, bonds, ring: Ring):
 
 def unzip_file(src: str, dst: str) -> None:
     try:
+        if not os.path.exists(src):
+            raise FileNotFoundError(f"Source file for unzipping not found: {src}")
+
         with ZipFile(src, "r") as zip_obj:
             zip_obj.extractall(dst)
         os.remove(src)
