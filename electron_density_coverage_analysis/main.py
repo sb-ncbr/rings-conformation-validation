@@ -7,19 +7,22 @@ from pathlib import Path
 import shutil
 from electron_density_coverage_analysis import run_as_function
 
+
+# [WP]: works if command-line argument ccp4_dir is set to "./ccp4"
 CCP4_DIR = Path('./ccp4')
 EXE = Path('./electron_density_coverage_analysis.py')
 
 OUTPUT_DIR = Path('./output')
-CPU_COUNT = cpu_count() / 2
+# CPU_COUNT = cpu_count() / 2
+CPU_COUNT = 1
 
 
-def print_messages(conn):
-    while True:
-        message = conn.recv()
-        if message == 'STOP':
-            break
-        print(message)
+# def print_messages(conn):
+#     while True:
+#         message = conn.recv()
+#         if message == 'STOP':
+#             break
+#         print(message)
 
 
 def _create_output_folder():
@@ -53,17 +56,16 @@ def process_args(args: argparse.Namespace):
 
 def run_exe(ligand_filepath: Path, arguments: argparse.Namespace):
     try:
-        PQ_pdb_name = ligand_filepath.name.split(".")[0]
-        pdb_id = PQ_pdb_name.split('_')[1]
+        pq_pdb_name = ligand_filepath.name.split(".")[0]
+        pdb_id = pq_pdb_name.split('_')[1]
         residue_id = ligand_filepath.parent.parent.name
         ccp4_filepath = str(Path(CCP4_DIR / f'{pdb_id}.ccp4').resolve())
-        
         arguments.input_cycle_pdb = str(ligand_filepath.resolve())
         arguments.input_density_ccp4 = ccp4_filepath
 
         # conn.send(f"Processing {ligand_filepath}")
         output = run_as_function(arguments)
-        result = (PQ_pdb_name, residue_id, output)
+        result = (pq_pdb_name, residue_id, output)
         # conn.send(f"Finished processing {ligand_filepath}")
 
     except Exception as e:
@@ -71,11 +73,11 @@ def run_exe(ligand_filepath: Path, arguments: argparse.Namespace):
     return result
 
 
-def get_filepathes(rootdir: Path, ring_type: str):
+def get_filepathes(rootdir: Path, ccp4_dir: Path, ring_type: str):
     try:
         l = []
 
-        all_ccp4_files = CCP4_DIR.glob('**/*')
+        all_ccp4_files = ccp4_dir.glob('**/*')
         pdb_ids_for_which_ccp4_is_available = [x.stem for x in all_ccp4_files]
         for f in Path(rootdir / 'validation_data' / ring_type / 'filtered_ligands').rglob("*"):
             if f.is_file():
@@ -95,6 +97,7 @@ def get_filepathes(rootdir: Path, ring_type: str):
 def run_analysis(args: argparse.Namespace):
     try:
         arguments = process_args(args)
+        logging.critical(arguments)
         params = ''
         if arguments.closest_voxel:
             params = params + "c"
@@ -112,7 +115,7 @@ def run_analysis(args: argparse.Namespace):
 
         for ring_type in ring_types:
 
-            filepaths = get_filepathes(Path(args.rootdir), ring_type)
+            filepaths = get_filepathes(Path(args.rootdir), Path(args.ccp4_dir), ring_type)
             if len(filepaths) == 0:
                 logging.info(f"No files for analysis found for ring {ring_type}")
                 continue
@@ -140,8 +143,8 @@ def main():
     parser = argparse.ArgumentParser(description='ED coverage analysis')
     parser.add_argument('rootdir', type=str,
                         help='Root directory of the result data (<ROOTDIR>/validation_data/etc)')
-    # parser.add_argument('ccp4_dir',
-    #                     type=str, help='Directory with ccp4 files')
+    parser.add_argument('ccp4_dir',
+                        type=str, help='Directory with ccp4 files')
 
     parser.add_argument('-s',
                         action='store_true', help='Simple mode - output is two numbers: first is the number of '
@@ -159,8 +162,6 @@ def main():
                         format='%(asctime)s - %(levelname)s - %(message)s',
                         filename='density-coverage.log')
     logging.info(f"Running electron density coverage analysis on CPU count: {CPU_COUNT}")
-
-    print(f"Arguments of main.py are: {args} ")
     _create_output_folder()
     run_analysis(args)
 
