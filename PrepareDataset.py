@@ -103,39 +103,39 @@ def start_program(results_folder, pq_cmd):
     command = commands.get(os.name, [])
     command.extend([results_folder, PQ_CONFIG])
 
-    pq_process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, universal_newlines=True, shell=False)
-    pq_process.wait()
-    stdout, stderr = [stream.strip() for stream in pq_process.communicate()]
-    pq_process.stdout.close()
+    # pq_process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, universal_newlines=True)
+    # pq_process.wait()
+    # stdout, stderr = [stream.strip() for stream in pq_process.communicate()]
+    # pq_process.stdout.close()
+    #
+    # #TODO
+    # if stderr or pq_process.returncode != 0:
+    #     logging.error(f"Error while running Pattern Query, PQ message:"
+    #                   f"\nstdout: {stdout}\nstderr: {stderr}\n---")
+    #     sys.exit(1)
+    # if stdout:
+    #     sys.stdout.write(stdout)
 
-    #TODO
-    if stderr or pq_process.returncode != 0:
-        logging.error(f"Error while running Pattern Query, PQ message:"
-                      f"\nstdout: {stdout}\nstderr: {stderr}\n---")
-        sys.exit(1)
-    if stdout:
-        sys.stdout.write(stdout)
+    try:
+        process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, universal_newlines=True)
 
-    # try:
-    #     process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, universal_newlines=True)
-    #
-    #     for stdout_line in iter(process.stdout.readline, ''):
-    #         logging.info(stdout_line.strip())
-    #     for stderr_line in iter(process.stderr.readline, ''):
-    #         if stderr_line.strip():
-    #             logging.error(stderr_line.strip())
-    #             # logging.error(e, stack_info=True, exc_info=True) ###
-    #             raise Exception
-    #             # sys.exit(1)
-    #
-    #     process.wait()
-    #
-    # except subprocess.SubprocessError as e:
-    #     logging.error(f"Error executing PatternQuery: {e}")
-    #     # sys.exit(1)
-    # except Exception as e:
-    #     logging.error(f"An unexpected error occurred: {e}")
-    #     # sys.exit(1)
+        for stdout_line in iter(process.stdout.readline, ''):
+            logging.info(stdout_line.strip())
+        for stderr_line in iter(process.stderr.readline, ''):
+            if stderr_line.strip():
+                logging.error(stderr_line.strip())
+                # logging.error(e, stack_info=True, exc_info=True) ###
+                raise Exception
+                # sys.exit(1)
+
+        process.wait()
+
+    except subprocess.SubprocessError as e:
+        logging.error(f"Error executing PatternQuery: {e}")
+        # sys.exit(1)
+    except Exception as e:
+        logging.error(f"An unexpected error occurred: {e}")
+        # sys.exit(1)
 
 
 def main(input_path: str, output_path: str):
