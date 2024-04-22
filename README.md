@@ -9,7 +9,7 @@ This repository contains software workflow from the article by Bučeková et al.
 - Python 3.10 available in the PATH environment
   - a binary installer is available from [here](https://www.python.org/downloads/release/python-31011/)
 - .NET 4.0 or newer (Windows only)
-- Mono 6.12.0 or newer (non-Windows operating systems only)
+- Mono 6.12.0.200 or newer (non-Windows operating systems only)
   - installation instructions are available [here](https://www.mono-project.com/download/stable)
 - git (or a compatible alternative) (only if you wish to clone the workflow's repository)
 
