@@ -1,6 +1,6 @@
-from ..Molecules.Components.geometries import Plane
-from ..Molecules.Components.rings import SixAtomRing
-from ..Molecules.Components.molecule import MoleculeType, Conformation
+from Molecules.Components.geometries import Plane
+from Molecules.Components.rings import SixAtomRing
+from Molecules.Components.molecule import MoleculeType, Conformation
 
 
 class Benzene(SixAtomRing):

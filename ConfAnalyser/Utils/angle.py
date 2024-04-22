@@ -1,4 +1,4 @@
-from ..Molecules.Components.geometries import Vector, Point
+from Molecules.Components.geometries import Vector, Point
 from math import degrees, atan2
 
 def dihedral_angle(p1: Point, p2: Point, p3: Point, p4: Point) -> float:

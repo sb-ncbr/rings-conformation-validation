@@ -1,10 +1,10 @@
 from typing import Optional
 
-from ..Molecules.benzene import Benzene
-from ..Molecules.cyclohexane import Cyclohexane
-from ..Molecules.cyclopentane import Cyclopentane
-from ..Molecules.Components.molecule import Molecule, MoleculeType
-from ..Utils.utils import load_file
+from Molecules.benzene import Benzene
+from Molecules.cyclohexane import Cyclohexane
+from Molecules.cyclopentane import Cyclopentane
+from Molecules.Components.molecule import Molecule, MoleculeType
+from Utils.utils import load_file
 
 def work_file(resources) -> Optional[Molecule]:
     """

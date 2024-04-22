@@ -1,5 +1,5 @@
-from ...Molecules.Components.molecule import Molecule, MoleculeType, Conformation
-from ...Molecules.Components.geometries import Plane
+from Molecules.Components.molecule import Molecule, MoleculeType, Conformation
+from Molecules.Components.geometries import Plane
 
 
 class Ring(Molecule):

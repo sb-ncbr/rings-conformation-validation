@@ -1,7 +1,7 @@
-from ..Molecules.Components.rings import SixAtomRing
-from ..Molecules.Components.geometries import Plane
-from ..Utils.angle import dihedral_angle
-from ..Molecules.Components.molecule import MoleculeType, Conformation
+from Molecules.Components.rings import SixAtomRing
+from Molecules.Components.geometries import Plane
+from Utils.angle import dihedral_angle
+from Molecules.Components.molecule import MoleculeType, Conformation
 
 
 class Cyclohexane(SixAtomRing):

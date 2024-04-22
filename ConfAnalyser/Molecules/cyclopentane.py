@@ -1,7 +1,7 @@
-from ..Molecules.Components.geometries import Plane
-from ..Molecules.Components.rings import FiveAtomRing
-from ..Molecules.Components.molecule import MoleculeType, Conformation
-from ..Utils.angle import dihedral_angle
+from Molecules.Components.geometries import Plane
+from Molecules.Components.rings import FiveAtomRing
+from Molecules.Components.molecule import MoleculeType, Conformation
+from Utils.angle import dihedral_angle
 
 
 class Cyclopentane(FiveAtomRing):

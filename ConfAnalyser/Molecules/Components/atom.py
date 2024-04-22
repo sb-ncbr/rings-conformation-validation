@@ -1,5 +1,5 @@
-from ...Utils.exceptions import *
-from ...Molecules.Components.geometries import Point
+from Utils.exceptions import *
+from Molecules.Components.geometries import Point
 
 
 class Atom(Point):
