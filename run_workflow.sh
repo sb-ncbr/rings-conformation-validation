@@ -22,7 +22,7 @@ for r in "$CYCLOPENTANE" "$CYCLOHEXANE"; do
         exit $?
     fi
 
-    python3 CreateTemplates.py -r "$r" -o "$OUTPUT_FOLDER"
+    python3 CreateTemplates.py -r "$r" -o "$OUTPUT_FOLDER" -i "$INPUT_DATA_FOLDER"
     exit_code=$?
     if [ $exit_code -ne 0 ]; then
         echo "Error: CreateTemplates failed with exit code $exit_code"
@@ -54,5 +54,6 @@ FILTERED_LIGANDS_PATH="$OUTPUT_FOLDER/validation_data/$BENZENE/filtered_ligands"
 CC_OUTPUT_PATH="$OUTPUT_FOLDER/validation_data/$BENZENE/output"
 python3 ConfComparer.py -t "$TEMPLATES_PATH" -i "$FILTERED_LIGANDS_PATH" -o "$CC_OUTPUT_PATH" -c mono
 
-CCP4="{$INPUT_DATA_FOLDER}/ccp4"
+#CCP4="{$INPUT_DATA_FOLDER}/ccp4"
+CCP4="./ccp4"
 cd electron_density_coverage_analysis && python3 main.py "$OUTPUT_FOLDER" "$CCP4"

@@ -106,7 +106,7 @@ def validate_atoms_order(ligand_block: cif.Block, input_atoms: tuple[str], atoms
 
     if len(atom_bonds_filtered) != atoms_count:
         logging.error(
-            f"Received: {input_atoms}{os.linesep}Found only: {atom_bonds_filtered}{os.linesep}{ligand_block.find_value('_chem_comp.id')}")
+            f"Received: {input_atoms}\nFound only: {atom_bonds_filtered}\n{ligand_block.find_value('_chem_comp.id')}")
         return None
 
     for i in range(len(input_atoms) - 1):
@@ -143,7 +143,7 @@ def correct_atoms_order(bonds: set[tuple[str, str]]) -> tuple[str]:
 
 
 def create_conf_analyser_input(ring: Ring, paths_to_pdbs_filename: str,
-                               atom_names_filename: str, ligands_dir: str) -> None | int:
+                               atom_names_filename: str, ligands_dir: str, document: cif.Document) -> None | int:
 
     unique_lines: set[tuple[str, tuple[str]]] = set()
     with open(paths_to_pdbs_filename, 'w') as paths:
@@ -160,14 +160,13 @@ def create_conf_analyser_input(ring: Ring, paths_to_pdbs_filename: str,
                 ligand, atom_names = get_data_from_pdb(path_to_pdb, ring)
                 unique_lines.add((ligand, tuple(atom_names)))
 
-        document = cif.read(DEFAULT_DICT_NAME)
-
         with open(atom_names_filename, 'w', encoding='utf-8') as atoms:
             for ligand_name, atom_names in unique_lines:
                 ligand_block = document.find_block(ligand_name)
                 if ligand_block is None:
-                    logging.error(
-                        f"The block {ligand_name} was not found in {DEFAULT_DICT_NAME}. Skipping...{os.linesep}")
+                    logging.warning(
+                        f"The block {ligand_name} was not found in {DEFAULT_DICT_NAME}. Skipping...\n")
+                    continue
 
                 ordered_atoms = validate_atoms_order(ligand_block, atom_names, ring.atom_number)
                 if ordered_atoms is None:
@@ -179,7 +178,7 @@ def create_conf_analyser_input(ring: Ring, paths_to_pdbs_filename: str,
                 atoms.write('\n')
 
     if len(unique_lines) == 0:
-        logging.error("No input files for creating templates were found.")
+        logging.warning("No input files for creating templates were found.")
         return -1
 
 
@@ -204,23 +203,25 @@ def extract_letters_before_underscore(string: str):
     return None
 
 
-def run_conf_analyser(ring: Ring, main_workflow_output_dir: str) -> None:
+def run_conf_analyser(ring: Ring, main_workflow_output_dir: str, document: cif.Document) -> None:
     # Prepare input files
+    logging.info("Creating input files for ConfAnalyser...")
     with tempfile.TemporaryDirectory() as tmp:
         paths_to_pdbs_path = os.path.join(tmp, 'paths_to_pdbs.txt')
         atom_names_path = os.path.join(tmp, 'atom_names.txt')
 
         ligands_dir = os.path.join(main_workflow_output_dir, ring.name.lower(), FILTERED_DATA)
-        return_code = create_conf_analyser_input(ring, paths_to_pdbs_path, atom_names_path, ligands_dir)
+        return_code = create_conf_analyser_input(ring, paths_to_pdbs_path, atom_names_path, ligands_dir, document)
 
         # no input data
         if return_code == -1:
-            return
+            raise Exception
 
         result_dict = {}
         mol_type = map_ring_to_molecule_type(ring)
 
         try:
+            logging.info(f"Starting ConfAnalyser...")
             result_dict = ConfAnalyser.ConfAnalyser(paths_file=paths_to_pdbs_path, names_file=atom_names_path,
                                                     molecule_type=mol_type).result()
 
@@ -275,11 +276,11 @@ def run_conf_analyser(ring: Ring, main_workflow_output_dir: str) -> None:
                 logging.info(f"Found template {path_to_template_pdb} --> {conf.lower()}.pdb")
 
 
-def main(ring: str, output_path: str):
-    logging.basicConfig(level=logging.DEBUG,
+def main(ring: str, output_path: str, input_path: str):
+    logging.basicConfig(level=logging.INFO,
                         format='%(asctime)s - %(levelname)s - %(message)s',
-                        filename="validation_workflow.log",
-                        filemode='a'
+                        # filename="validation_workflow.log",
+                        # filemode='a'
                         )
 
     if ring.upper() not in Ring.__members__.keys():
@@ -294,9 +295,21 @@ def main(ring: str, output_path: str):
         logging.error(f"The directory {os.path.abspath(main_workflow_output_dir)} does not exist.")
         sys.exit(1)
 
+    path_to_comp_dict = os.path.join(input_path, DEFAULT_DICT_NAME)
+    logging.info('Reading components dictionary...')
+    if not os.path.exists(path_to_comp_dict):
+        logging.error(f"The file {path_to_comp_dict} does not exist. Exiting...")
+        sys.exit(1)
+
+    document = cif.read(path_to_comp_dict)
+
     os.makedirs(os.path.join(main_workflow_output_dir, ring.name.lower(), TEMPLATES_DIR), exist_ok=True)
 
-    run_conf_analyser(ring, main_workflow_output_dir)
+    try:
+        run_conf_analyser(ring, main_workflow_output_dir, document)
+    except Exception as e:
+        logging.error(e, stack_info=True, exc_info=True)
+        sys.exit(1)
 
     logging.info(f"[{ring.name.capitalize()}]: CreateTemplates has completed successfully")
 
@@ -310,6 +323,8 @@ if __name__ == "__main__":
                                f'{[e.name for e in Ring]}')
     required.add_argument('-o', '--output', type=str, required=True,
                           help='Path to the output directory. Should be the same as in the previous step.')
+    required.add_argument('-i', '--input', type=str, required=True,
+                          help='Path to the directory with input data (local pdb, ccp4 files, etc.)')
     args = parser.parse_args()
 
-    main(args.ring, args.output)
+    main(args.ring, args.output, args.input)
