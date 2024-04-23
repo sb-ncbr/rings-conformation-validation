@@ -48,20 +48,17 @@ def addResolution(data_dir, ring_type, RMSD_data):
 def addElDensity(ring_type, xray_merged_resolution):
     el_dens_result_dir = "electron_density_coverage_analysis"
     file2_path = os.path.join(el_dens_result_dir, "output", f'{ring_type}_params__analysis_output.csv')
-    #output_file = f'{ring_type}_RMSD_Res_ED.csv'
+    # output_file = f'{ring_type}_RMSD_Res_ED.csv'
     trash_file = f'trash_ED_{ring_type}.csv'
-
-    file2 = pd.read_csv(file2_path, delimiter=';')
     new_headers = ['Entry', 'Atoms in ring']
-    file2.columns = new_headers
-
+    file2 = pd.read_csv(file2_path, delimiter=';', names=new_headers)
     file2[['Ring_ID', 'Ligand_name', 'Coverage']] = file2['Entry'].str.split(',', expand=True)
     merged_coverage = pd.merge(xray_merged_resolution, file2[['Ring_ID', 'Coverage']],
                                how='left', on=['Ring_ID'])
 
     unmatched_entries = xray_merged_resolution[~xray_merged_resolution['Ring_ID'].isin(file2['Ring_ID'])]
     unmatched_entries.to_csv(trash_file, sep=';', index=False)
-    #merged_coverage.to_csv(output_file, sep=';', index=False)
+    # merged_coverage.to_csv(output_file, sep=';', index=False)
 
     return merged_coverage
 
