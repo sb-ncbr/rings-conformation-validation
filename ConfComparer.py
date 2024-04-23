@@ -225,8 +225,8 @@ class Analysis:
                         self._process_entry(conf_name, entry)
                 logging.info(f"Analysis of conformation {conf_name} finished.")
             self._generate_result_files()
-            # print(file=sys.stderr)
-        # self._print_results()
+            print(file=sys.stderr)
+        self._print_results()
 
     def _generate_result_files(self):
         # simple list of molecules and theirs conformations
@@ -386,10 +386,11 @@ if __name__ == "__main__":
     _Storage.print_RMSD_chart = args.print_RMSD_chart
     _Storage.print_summary = not args.print_summary_off
 
-    logging.basicConfig(level=logging.DEBUG,
+    logging.basicConfig(level=logging.INFO,
                         format='%(asctime)s - %(levelname)s - %(message)s',
-                        filename="validation_workflow.log",
-                        filemode='a')
+                        # filename="validation_workflow.log",
+                        # filemode='a'
+                        )
     logging.info(f"Starting ConfComparer on input data: {_Storage.input_dir}...\n"
                  f"Templates used: {_Storage.templates_dir}")
 

@@ -6,10 +6,8 @@ import os
 def statistic_RMSD(ring_type, base_dir):
     filename = "result_rmsd_chart.csv"
     file_path = os.path.join(base_dir, f'{ring_type}', "output", filename)
-    print(file_path)
     #output_file = f'{ring_type}_minimum.csv'
     RMSD_data = pd.read_csv(file_path, delimiter=';', header=0)
-    print(RMSD_data)
     RMSD_data = RMSD_data.dropna(axis=1)
 
     values_columns = RMSD_data.columns[2:]
@@ -171,7 +169,6 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     base_dir = os.path.join(args.output, "validation_data")
-    print(base_dir)
 
     # Call statistic_RMSD with the specified ring type
     rmsd_result = statistic_RMSD(args.ring, base_dir)

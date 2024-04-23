@@ -52,7 +52,7 @@ def extract_ligand_names(doc: cif.Document) -> Dict[Ring, List[str]]:
                     extracted_names[ring].append(ligand_name)
 
         except Exception:
-            logging.debug(f'Error while extracting ligand names from block with name {compound_name}. Skipping...')
+            logging.warning(f'Error while extracting ligand names from block with name {compound_name}. Skipping...')
             continue
 
     if not all(extracted_names.values()):
@@ -139,10 +139,10 @@ def start_program(results_folder, pq_cmd):
 
 
 def main(input_path: str, output_path: str):
-    logging.basicConfig(level=logging.DEBUG,
+    logging.basicConfig(level=logging.INFO,
                         format='%(asctime)s - %(levelname)s - %(message)s',
-                        filename="validation_workflow.log",
-                        filemode='a'
+                        # filename="validation_workflow.log",
+                        # filemode='a'
                         )
     logging.info('Starting PrepareDataset...')
 
