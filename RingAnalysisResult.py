@@ -1,3 +1,4 @@
+from pathlib import Path
 import pandas as pd
 import argparse
 import os
@@ -6,22 +7,18 @@ import os
 def statistic_RMSD(ring_type, base_dir):
     filename = "result_rmsd_chart.csv"
     file_path = os.path.join(base_dir, f'{ring_type}', "output", filename)
-    #output_file = f'{ring_type}_minimum.csv'
     RMSD_data = pd.read_csv(file_path, delimiter=';', header=0)
     RMSD_data = RMSD_data.dropna(axis=1)
 
     values_columns = RMSD_data.columns[2:]
     RMSD_data['MinValue'] = RMSD_data[values_columns].min(axis=1)
     RMSD_data['Conformation'] = RMSD_data[values_columns].idxmin(axis=1)
-    #RMSD_data.to_csv(output_file, sep=';', index=False)
 
     return RMSD_data
 
 
 def addResolution(data_dir, ring_type, RMSD_data):
     file_information_path = os.path.join(data_dir, 'PDB_INFORMATION.csv')
-    #output_file = f'{ring_type}_RMSD_resolution.csv'
-    trash_file = f'trash_resolution_{ring_type}.csv'
     file2 = pd.read_csv(file_information_path, sep=';')
 
     RMSD_data['Entry ID_x'] = RMSD_data['Ring_ID'].str.extract(r'_(\w+)_\d+')
@@ -31,8 +28,6 @@ def addResolution(data_dir, ring_type, RMSD_data):
                                  file2[['Entry ID', 'Experimental Method', 'Deposition Date', 'Resolution (Å)']],
                                  how='left', left_on='Entry ID', right_on='Entry ID')
 
-    unmatched_entries = RMSD_data[~RMSD_data['Entry ID'].isin(file2['Entry ID'])]
-    unmatched_entries.to_csv(trash_file, sep=';', index=False)
     merged_resolution.drop(['Entry ID_x'], axis=1, inplace=True)
 
     xray_merged_resolution = pd.DataFrame(columns=merged_resolution.columns)
@@ -40,25 +35,20 @@ def addResolution(data_dir, ring_type, RMSD_data):
         methods = row['Experimental Method']
         if isinstance(methods, str) and 'X-RAY DIFFRACTION' in methods.split(','):
             xray_merged_resolution = pd.concat([xray_merged_resolution, row.to_frame().transpose()], ignore_index=True)
-    #xray_merged_resolution.to_csv(output_file, sep=';', index=False)
 
     return xray_merged_resolution
 
 
-def addElDensity(ring_type, xray_merged_resolution):
-    el_dens_result_dir = "electron_density_coverage_analysis"
-    file2_path = os.path.join(el_dens_result_dir, "output", f'{ring_type}_params__analysis_output.csv')
-    # output_file = f'{ring_type}_RMSD_Res_ED.csv'
-    trash_file = f'trash_ED_{ring_type}.csv'
+def addElDensity(ring_type, xray_merged_resolution, base_dir):
+    path_to_output_file = Path(base_dir) / f"{ring_type}/el-density-output"
+    path_to_output_file = path_to_output_file.resolve()
+    file2_path = path_to_output_file / f"{ring_type}_params__analysis_output.csv"
+
     new_headers = ['Entry', 'Atoms in ring']
     file2 = pd.read_csv(file2_path, delimiter=';', names=new_headers)
     file2[['Ring_ID', 'Ligand_name', 'Coverage']] = file2['Entry'].str.split(',', expand=True)
     merged_coverage = pd.merge(xray_merged_resolution, file2[['Ring_ID', 'Coverage']],
                                how='left', on=['Ring_ID'])
-
-    unmatched_entries = xray_merged_resolution[~xray_merged_resolution['Ring_ID'].isin(file2['Ring_ID'])]
-    unmatched_entries.to_csv(trash_file, sep=';', index=False)
-    # merged_coverage.to_csv(output_file, sep=';', index=False)
 
     return merged_coverage
 
@@ -174,7 +164,7 @@ if __name__ == '__main__':
     resolution_result = addResolution(args.input, args.ring, rmsd_result)
 
     # Call addElDensity
-    coverage_result = addElDensity(args.ring, resolution_result)
+    coverage_result = addElDensity(args.ring, resolution_result, base_dir)
 
     # Call Summary
     excel_file_path = Summary(base_dir, args.ring, coverage_result)

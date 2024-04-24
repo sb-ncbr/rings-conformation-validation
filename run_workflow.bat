@@ -50,8 +50,7 @@ if "!errorlevel!" NEQ "0" (
 )
 
 cd electron_density_coverage_analysis
-REM set "CCP4=!INPUT_DATA_FOLDER!\ccp4"
-set "CCP4=.\ccp4"
+set "CCP4=!INPUT_DATA_FOLDER!\ccp4"
 
 python main.py !OUTPUT_FOLDER! !CCP4!
 if "!errorlevel!" NEQ "0" (

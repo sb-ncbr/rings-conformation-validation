@@ -1,40 +1,25 @@
 import csv
 import logging
-from multiprocessing import Pool, cpu_count, Pipe, Process
-import os
+from multiprocessing import Pool, cpu_count
 import argparse
 from pathlib import Path
 import shutil
 from electron_density_coverage_analysis import run_as_function
 
-
-# [WP]: works if command-line argument ccp4_dir is set to "./ccp4"
-CCP4_DIR = Path('./ccp4')
 EXE = Path('./electron_density_coverage_analysis.py')
-
-OUTPUT_DIR = Path('./output')
-# CPU_COUNT = cpu_count() / 2
-CPU_COUNT = 1
+CPU_COUNT = cpu_count()
 
 
-# def print_messages(conn):
-#     while True:
-#         message = conn.recv()
-#         if message == 'STOP':
-#             break
-#         print(message)
-
-
-def _create_output_folder():
+def _create_output_folder(output_folder: Path):
     try:
-        if OUTPUT_DIR.exists():
-            shutil.rmtree(str(OUTPUT_DIR.resolve()))
+        if output_folder.exists():
+            shutil.rmtree(str(output_folder.resolve()))
 
-        OUTPUT_DIR.mkdir(parents=True, exist_ok=False)
+        output_folder.mkdir(parents=True, exist_ok=False)
     except Exception as e:
         logging.error(e, stack_info=True, exc_info=True)
     
-    return OUTPUT_DIR
+    return output_folder
 
 
 def process_args(args: argparse.Namespace):
@@ -54,19 +39,17 @@ def process_args(args: argparse.Namespace):
     return a
 
 
-def run_exe(ligand_filepath: Path, arguments: argparse.Namespace):
+def run_exe(ligand_filepath: Path, ccp4_dir_path: Path,  arguments: argparse.Namespace):
     try:
         pq_pdb_name = ligand_filepath.name.split(".")[0]
         pdb_id = pq_pdb_name.split('_')[1]
         residue_id = ligand_filepath.parent.parent.name
-        ccp4_filepath = str(Path(CCP4_DIR / f'{pdb_id}.ccp4').resolve())
+        ccp4_filepath = str(Path(ccp4_dir_path / f'{pdb_id}.ccp4').resolve())
         arguments.input_cycle_pdb = str(ligand_filepath.resolve())
         arguments.input_density_ccp4 = ccp4_filepath
 
-        # conn.send(f"Processing {ligand_filepath}")
         output = run_as_function(arguments)
         result = (pq_pdb_name, residue_id, output)
-        # conn.send(f"Finished processing {ligand_filepath}")
 
     except Exception as e:
         logging.error(e, stack_info=True, exc_info=True)
@@ -85,7 +68,6 @@ def get_filepathes(rootdir: Path, ccp4_dir: Path, ring_type: str):
                 stem = f.stem
                 pdb_id = stem.split('_')[1]
                 if pdb_id in pdb_ids_for_which_ccp4_is_available:
-                    # logging.info(f"Getting file {f.stem}")
                     l.append(f)
         logging.info(f"[{ring_type.capitalize()}]: There are {len(l)} PDB structures with corresponding CCP4 file "
                      f"available.")
@@ -97,7 +79,6 @@ def get_filepathes(rootdir: Path, ccp4_dir: Path, ring_type: str):
 def run_analysis(args: argparse.Namespace):
     try:
         arguments = process_args(args)
-        logging.critical(arguments)
         params = ''
         if arguments.closest_voxel:
             params = params + "c"
@@ -106,14 +87,10 @@ def run_analysis(args: argparse.Namespace):
 
         ring_types = ['cyclohexane', 'cyclopentane', 'benzene']
 
-        # # Create a Pipe for communication between processes
-        # parent_conn, child_conn = Pipe()
-        #
-        # # Start the printing process
-        # printing_process = Process(target=print_messages, args=(child_conn,))
-        # printing_process.start()
-
         for ring_type in ring_types:
+            path_to_output = Path(args.rootdir) / f"validation_data/{ring_type}/el-density-output"
+            path_to_output = path_to_output.resolve()
+            _create_output_folder(path_to_output)
 
             filepaths = get_filepathes(Path(args.rootdir), Path(args.ccp4_dir), ring_type)
             if len(filepaths) == 0:
@@ -121,20 +98,16 @@ def run_analysis(args: argparse.Namespace):
                 continue
 
             cvs_filename = ring_type + '_params_' + params + '_analysis_output.csv'
-            with open(str(Path(OUTPUT_DIR / cvs_filename).resolve()), mode='w', newline='') as f:
-                # rows = []
+            with open(str(Path(path_to_output / cvs_filename).resolve()), mode='w', newline='') as f:
                 w = csv.writer(f, delimiter=',', quotechar='"', quoting=csv.QUOTE_MINIMAL)
 
                 with Pool(int(CPU_COUNT)) as p:
-                    modified_filepaths = [(f, arguments) for f in filepaths]
+                    modified_filepaths = [(f, Path(args.ccp4_dir), arguments) for f in filepaths]
                     logging.info(f"[{ring_type.capitalize()}]: Starting analysis for {len(filepaths)} files...")
                     rows = p.starmap(run_exe, modified_filepaths)
                     w.writerows(rows)
                     logging.info(f"[{ring_type.capitalize()}]: Finished analysis for {len(filepaths)} files.")
 
-        # # Signal the printing process to stop
-        # parent_conn.send('STOP')
-        # printing_process.join()
     except Exception as e:
         logging.error(e, stack_info=True, exc_info=True)
 
@@ -158,11 +131,12 @@ def main():
                                                   'voxel is used')
     
     args = parser.parse_args()
-    logging.basicConfig(level=logging.DEBUG,
+    logging.basicConfig(level=logging.INFO,
                         format='%(asctime)s - %(levelname)s - %(message)s',
-                        filename='density-coverage.log')
+                        # filename='validation_workflow.log',
+                        # filemode='a'
+                        )
     logging.info(f"Running electron density coverage analysis on CPU count: {CPU_COUNT}")
-    _create_output_folder()
     run_analysis(args)
 
 
