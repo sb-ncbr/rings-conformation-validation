@@ -1,3 +1,4 @@
+import re
 from argparse import ArgumentParser
 from HelperModule.Ring import Ring
 from HelperModule.helper_functions import unzip_file, is_mono_installed
@@ -103,39 +104,18 @@ def start_program(results_folder, pq_cmd):
     command = commands.get(os.name, [])
     command.extend([results_folder, PQ_CONFIG])
 
-    # pq_process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, universal_newlines=True)
-    # pq_process.wait()
-    # stdout, stderr = [stream.strip() for stream in pq_process.communicate()]
-    # pq_process.stdout.close()
-    #
-    # #TODO
-    # if stderr or pq_process.returncode != 0:
-    #     logging.error(f"Error while running Pattern Query, PQ message:"
-    #                   f"\nstdout: {stdout}\nstderr: {stderr}\n---")
-    #     sys.exit(1)
-    # if stdout:
-    #     sys.stdout.write(stdout)
+    pq_process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, universal_newlines=True)
+    stdout, stderr = [stream.strip() for stream in pq_process.communicate()]
 
-    try:
-        process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, universal_newlines=True)
+    error_pattern = r"^\[.*?\] Error:"
+    for line in stdout.splitlines():
+        if re.match(error_pattern, line):
+        # if "Error:" in line:
+            logging.error(f"Error while running Pattern Query {line}")
+            sys.exit(1)
 
-        for stdout_line in iter(process.stdout.readline, ''):
-            logging.info(stdout_line.strip())
-        for stderr_line in iter(process.stderr.readline, ''):
-            if stderr_line.strip():
-                logging.error(stderr_line.strip())
-                # logging.error(e, stack_info=True, exc_info=True) ###
-                raise Exception
-                # sys.exit(1)
-
-        process.wait()
-
-    except subprocess.SubprocessError as e:
-        logging.error(f"Error executing PatternQuery: {e}")
-        # sys.exit(1)
-    except Exception as e:
-        logging.error(f"An unexpected error occurred: {e}")
-        # sys.exit(1)
+    if stdout:
+        print(stdout)
 
 
 def main(input_path: str, output_path: str):
@@ -197,10 +177,7 @@ def main(input_path: str, output_path: str):
     create_config_for_pq(path_to_local_pdb, ligands_dict)
 
     logging.info(f"Running Pattern Query on CPU count: {CPU_COUNT}...")
-    # try:
     start_program(main_workflow_output_dir, pq_cmd=PQ_CMD)
-    # except Exception:
-    #     sys.exit(1)
 
     # Unzipping the results from Pattern Query
     logging.info('Unzipping the results from Pattern Query...')
