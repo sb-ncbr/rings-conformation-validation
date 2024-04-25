@@ -1,8 +1,10 @@
+from pathlib import Path
+
 from gemmi import cif
 from HelperModule.Ring import Ring
 
 
-def get_data_from_pdb(path_to_pdb: str, ring: Ring) -> tuple[str, list[str]]:
+def get_data_from_pdb(path_to_pdb: Path, ring: Ring) -> tuple[str, list[str]]:
     atom_names = []
     with open(path_to_pdb, 'r') as file:
         lines = file.read().splitlines()
