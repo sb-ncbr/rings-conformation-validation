@@ -44,10 +44,11 @@ def run_exe(ligand_filepath: Path, ccp4_dir_path: Path,  arguments: argparse.Nam
         pq_pdb_name = ligand_filepath.name.split(".")[0]
         pdb_id = pq_pdb_name.split('_')[1]
         residue_id = ligand_filepath.parent.parent.name
-        ccp4_filepath = str(Path(ccp4_dir_path / f'{pdb_id}.ccp4').resolve())
+        ccp4_filepath = (ccp4_dir_path / (pdb_id + '.ccp4')).resolve()
         arguments.input_cycle_pdb = str(ligand_filepath.resolve())
-        arguments.input_density_ccp4 = ccp4_filepath
+        arguments.input_density_ccp4 = str(ccp4_filepath)
 
+        logging.info(f"Analysing {str(Path(arguments.input_cycle_pdb).name)}...")
         output = run_as_function(arguments)
         result = (pq_pdb_name, residue_id, output)
 
@@ -56,12 +57,14 @@ def run_exe(ligand_filepath: Path, ccp4_dir_path: Path,  arguments: argparse.Nam
     return result
 
 
-def get_filepathes(rootdir: Path, ccp4_dir: Path, ring_type: str):
+def get_filepaths(rootdir: Path, ccp4_dir: Path, ring_type: str):
     try:
         l = []
 
         all_ccp4_files = ccp4_dir.glob('**/*')
+        print(all_ccp4_files)
         pdb_ids_for_which_ccp4_is_available = [x.stem for x in all_ccp4_files]
+        print(pdb_ids_for_which_ccp4_is_available)
         for f in Path(rootdir / 'validation_data' / ring_type / 'filtered_ligands').rglob("*"):
             if f.is_file():
                 # get path
@@ -88,17 +91,16 @@ def run_analysis(args: argparse.Namespace):
         ring_types = ['cyclohexane', 'cyclopentane', 'benzene']
 
         for ring_type in ring_types:
-            path_to_output = Path(args.rootdir) / f"validation_data/{ring_type}/el-density-output"
-            path_to_output = path_to_output.resolve()
+            path_to_output = Path(args.rootdir).resolve() / "validation_data" / ring_type / "el-density-output"
             _create_output_folder(path_to_output)
 
-            filepaths = get_filepathes(Path(args.rootdir), Path(args.ccp4_dir), ring_type)
+            filepaths = get_filepaths(Path(args.rootdir), Path(args.ccp4_dir), ring_type)
             if len(filepaths) == 0:
                 logging.info(f"No files for analysis found for ring {ring_type}")
                 continue
 
             cvs_filename = ring_type + '_params_' + params + '_analysis_output.csv'
-            with open(str(Path(path_to_output / cvs_filename).resolve()), mode='w', newline='') as f:
+            with open(path_to_output / cvs_filename, mode='w', newline='') as f:
                 w = csv.writer(f, delimiter=',', quotechar='"', quoting=csv.QUOTE_MINIMAL)
 
                 with Pool(int(CPU_COUNT)) as p:
@@ -133,8 +135,6 @@ def main():
     args = parser.parse_args()
     logging.basicConfig(level=logging.INFO,
                         format='%(asctime)s - %(levelname)s - %(message)s',
-                        # filename='validation_workflow.log',
-                        # filemode='a'
                         )
     logging.info(f"Running electron density coverage analysis on CPU count: {CPU_COUNT}")
     run_analysis(args)
