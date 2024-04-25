@@ -1,12 +1,13 @@
 import csv
 import logging
+import sys
 from multiprocessing import Pool, cpu_count
 import argparse
 from pathlib import Path
 import shutil
 from electron_density_coverage_analysis import run_as_function
 
-EXE = Path('./electron_density_coverage_analysis.py')
+# EXE = Path('./electron_density_coverage_analysis.py')
 CPU_COUNT = cpu_count()
 
 
@@ -18,7 +19,7 @@ def _create_output_folder(output_folder: Path):
         output_folder.mkdir(parents=True, exist_ok=False)
     except Exception as e:
         logging.error(e, stack_info=True, exc_info=True)
-    
+
     return output_folder
 
 
@@ -40,6 +41,9 @@ def process_args(args: argparse.Namespace):
 
 
 def run_exe(ligand_filepath: Path, ccp4_dir_path: Path,  arguments: argparse.Namespace):
+    logging.basicConfig(level=logging.INFO,
+                        format='%(asctime)s - %(levelname)s - %(message)s',
+                        )
     try:
         pq_pdb_name = ligand_filepath.name.split(".")[0]
         pdb_id = pq_pdb_name.split('_')[1]
@@ -48,7 +52,7 @@ def run_exe(ligand_filepath: Path, ccp4_dir_path: Path,  arguments: argparse.Nam
         arguments.input_cycle_pdb = str(ligand_filepath.resolve())
         arguments.input_density_ccp4 = str(ccp4_filepath)
 
-        logging.info(f"Analysing {str(Path(arguments.input_cycle_pdb).name)}...")
+        logging.info(f"Analysing {arguments.input_cycle_pdb}...")
         output = run_as_function(arguments)
         result = (pq_pdb_name, residue_id, output)
 
@@ -62,15 +66,17 @@ def get_filepaths(rootdir: Path, ccp4_dir: Path, ring_type: str):
         l = []
 
         all_ccp4_files = ccp4_dir.glob('**/*')
-        print(all_ccp4_files)
         pdb_ids_for_which_ccp4_is_available = [x.stem for x in all_ccp4_files]
-        print(pdb_ids_for_which_ccp4_is_available)
+        # print(pdb_ids_for_which_ccp4_is_available)
+        # print(str(Path(rootdir / 'validation_data' / ring_type / 'filtered_ligands')))
         for f in Path(rootdir / 'validation_data' / ring_type / 'filtered_ligands').rglob("*"):
+            # print(f"One: {f}")
             if f.is_file():
                 # get path
                 stem = f.stem
                 pdb_id = stem.split('_')[1]
                 if pdb_id in pdb_ids_for_which_ccp4_is_available:
+                    # print(f"TWO: {f}")
                     l.append(f)
         logging.info(f"[{ring_type.capitalize()}]: There are {len(l)} PDB structures with corresponding CCP4 file "
                      f"available.")
@@ -92,6 +98,10 @@ def run_analysis(args: argparse.Namespace):
 
         for ring_type in ring_types:
             path_to_output = Path(args.rootdir).resolve() / "validation_data" / ring_type / "el-density-output"
+            # print(args.rootdir)
+            # print(str(Path(args.rootdir)))
+            # print(str(Path(args.rootdir).resolve()))
+            # print(str(path_to_output))
             _create_output_folder(path_to_output)
 
             filepaths = get_filepaths(Path(args.rootdir), Path(args.ccp4_dir), ring_type)
