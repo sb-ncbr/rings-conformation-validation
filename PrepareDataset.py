@@ -65,7 +65,7 @@ def extract_ligand_names(doc: cif.Document) -> Dict[Ring, List[str]]:
     return extracted_names
 
 
-def create_config_for_pq(path_to_pdb_local: str, ligands_dict: Dict[Ring, List[str]]) -> None:
+def create_config_for_pq(path_to_main_output: Path, path_to_pdb_local: str, ligands_dict: Dict[Ring, List[str]]) -> None:
     logging.info("Creating configuration file for Pattern Query...")
     config = {
         "InputFolders": [path_to_pdb_local],
@@ -79,7 +79,7 @@ def create_config_for_pq(path_to_pdb_local: str, ligands_dict: Dict[Ring, List[s
                                               f".Inside(Residues({ligands}))"))
 
     try:
-        with open(PQ_CONFIG, "w") as outfile:
+        with open(path_to_main_output / PQ_CONFIG, "w") as outfile:
             json.dump(config, outfile)
         logging.info("Configuration file successfully created.")
     except OSError as e:
@@ -97,15 +97,14 @@ def create_query(query_id: str, query_string: str) -> Dict[str, str]:
     }
 
 
-def start_program(results_folder, pq_cmd):
-
+def start_program(results_folder: Path, pq_cmd):
     commands = {
         'posix': ['mono', pq_cmd],
         'nt': [pq_cmd]
     }
 
     command = commands.get(os.name, [])
-    command.extend([results_folder, PQ_CONFIG])
+    command.extend([results_folder, str(results_folder / PQ_CONFIG)])
 
     logging.info(f"Running Pattern Query on CPU count: {CPU_COUNT}...")
 
@@ -146,7 +145,8 @@ def prerequisites_are_met(input_dir: str, output_dir: str) -> bool:
     if os.name == 'posix' and not is_mono_installed():
         return False
 
-    main_workflow_output_dir = (Path(output_dir) / MAIN_DIR).resolve()
+    output_path = Path(output_dir).resolve()
+    main_workflow_output_dir = output_path / MAIN_DIR
     try:
         os.makedirs(main_workflow_output_dir)
     except FileExistsError:
@@ -184,13 +184,13 @@ def main(input_path: str, output_path: str):
     if not prerequisites_are_met(input_path, output_path):
         sys.exit(1)
 
-    document = read_component_dictionary((Path(input_path) / DEFAULT_DICT_NAME).resolve())
+    document = read_component_dictionary(Path(input_path).resolve() / DEFAULT_DICT_NAME)
 
-    path_to_local_pdb = (Path(input_path) / PDB).resolve()
-    main_workflow_output_dir = (Path(output_path) / MAIN_DIR).resolve()
+    path_to_local_pdb = Path(input_path).resolve() / PDB
+    main_workflow_output_dir = Path(output_path).resolve() / MAIN_DIR
 
     ligands_dict = extract_ligand_names(document)
-    create_config_for_pq(str(path_to_local_pdb), ligands_dict)
+    create_config_for_pq(main_workflow_output_dir, str(path_to_local_pdb), ligands_dict)
 
     start_program(main_workflow_output_dir, pq_cmd=PQ_CMD)
 

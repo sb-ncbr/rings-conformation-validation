@@ -1,3 +1,4 @@
+import logging
 from pathlib import Path
 import pandas as pd
 import argparse
@@ -155,6 +156,10 @@ if __name__ == '__main__':
                         help='Path to the directory with input data (local pdb, ccp4 files, etc.)')
     args = parser.parse_args()
 
+    logging.basicConfig(level=logging.INFO,
+                        format='%(asctime)s - %(levelname)s - %(message)s',
+                        )
+    logging.info(f"[{args.ring.capitalize()}]: Starting RingAnalysisResult...")
     base_dir = os.path.join(args.output, "validation_data")
 
     # Call statistic_RMSD with the specified ring type
@@ -168,3 +173,4 @@ if __name__ == '__main__':
 
     # Call Summary
     excel_file_path = Summary(base_dir, args.ring, coverage_result)
+    logging.info(f"[{args.ring.capitalize()}]: RingAnalysisResult has completed successfully")

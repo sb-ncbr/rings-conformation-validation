@@ -49,15 +49,13 @@ if "!errorlevel!" NEQ "0" (
     exit /b !errorlevel!
 )
 
-cd electron_density_coverage_analysis
 set "CCP4=!INPUT_DATA_FOLDER!\ccp4"
 
-python main.py !OUTPUT_FOLDER! !CCP4!
+python electron_density_coverage_analysis\main.py !OUTPUT_FOLDER! !CCP4!
 if "!errorlevel!" NEQ "0" (
     exit /b !errorlevel!
 )
 
-cd ..
 python RingAnalysisResult.py -r !CYCLOPENTANE! -o !OUTPUT_FOLDER! -i !INPUT_DATA_FOLDER!
 
 python RingAnalysisResult.py -r !CYCLOHEXANE! -o !OUTPUT_FOLDER! -i !INPUT_DATA_FOLDER!

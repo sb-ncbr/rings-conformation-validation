@@ -53,7 +53,16 @@ TEMPLATES_PATH="$OUTPUT_FOLDER/validation_data/$CYCLOHEXANE/templates"
 FILTERED_LIGANDS_PATH="$OUTPUT_FOLDER/validation_data/$BENZENE/filtered_ligands"
 CC_OUTPUT_PATH="$OUTPUT_FOLDER/validation_data/$BENZENE/output"
 python3 ConfComparer.py -t "$TEMPLATES_PATH" -i "$FILTERED_LIGANDS_PATH" -o "$CC_OUTPUT_PATH" -c mono
+exit_code=$?
+    if [ $exit_code -ne 0 ]; then
+        echo "Error: ConfComparer failed with exit code $exit_code"
+        exit $?
+    fi
 
 CCP4="{$INPUT_DATA_FOLDER}/ccp4"
 
-cd electron_density_coverage_analysis && python3 main.py "$OUTPUT_FOLDER" "$CCP4"
+python3 electron_density_coverage_analysis/main.py "$OUTPUT_FOLDER" "$CCP4"
+
+python3 RingAnalysisResult.py -r "$CYCLOPENTANE" -o "$OUTPUT_FOLDER" -i "$INPUT_DATA_FOLDER"
+python3 RingAnalysisResult.py -r "$CYCLOHEXANE" -o "$OUTPUT_FOLDER" -i "$INPUT_DATA_FOLDER"
+python3 RingAnalysisResult.py -r "$BENZENE" -o "$OUTPUT_FOLDER" -i "$INPUT_DATA_FOLDER"
