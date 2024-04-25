@@ -13,6 +13,7 @@ from argparse import ArgumentParser
 from gemmi import cif
 from HelperModule.Ring import Ring
 from HelperModule.getter_functions import get_data_from_pdb, get_bonds_from_cif
+from HelperModule.helper_functions import read_component_dictionary, is_valid_directory
 from HelperModule.constants import *
 
 
@@ -319,31 +320,6 @@ def run_conf_analyser(ring: Ring, main_workflow_output_dir: Path, document: cif.
                 logging.info(f"Found template {path_to_template_pdb} --> {conf.lower()}.pdb")
 
 
-def read_component_dictionary(path_to_comp_dict: Path) -> cif.Document:
-    logging.info('Reading components dictionary...')
-    try:
-        document = cif.read(str(path_to_comp_dict))
-        return document
-    except FileNotFoundError:
-        logging.error(f"File {str(path_to_comp_dict)} not found. Please check the file path.")
-        sys.exit('Exiting...')
-    except PermissionError:
-        logging.error(f"Permission denied. Make sure you have the necessary permissions "
-                      f"to access the file {str(path_to_comp_dict)}.")
-        sys.exit('Exiting...')
-    except Exception as e:
-        logging.error(f"An error occurred while trying to read {str(path_to_comp_dict)}: {e}")
-        sys.exit('Exiting...')
-
-
-def is_valid_directory(directory: str) -> bool:
-    directory_path = Path(directory).resolve()
-    if not directory_path.exists():
-        logging.error(f"The directory {str(directory_path)} does not exist.")
-        return False
-    return True
-
-
 def validate_args(ring: str, output_dir: str, input_dir: str) -> bool:
 
     # Validate the ring argument
@@ -379,11 +355,14 @@ def main(ring: str, output_dir: str, input_dir: str):
     logging.basicConfig(level=logging.INFO,
                         format='%(asctime)s - %(levelname)s - %(message)s'
                         )
+
+    logging.info(f"[{ring.capitalize()}]: Starting CreateTemplates...")
+
     # Validate input arguments
     if not validate_args(ring, output_dir, input_dir):
         sys.exit(1)
 
-    logging.info(f"[{ring.capitalize()}]: Starting CreateTemplates...")
+
     main_workflow_output_dir = (Path(output_dir) / MAIN_DIR).resolve()
     path_to_comp_dict: Path = (Path(input_dir) / DEFAULT_DICT_NAME).resolve()
     prepare_templates_dir(main_workflow_output_dir / ring.lower() / TEMPLATES_DIR)
