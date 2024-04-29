@@ -46,7 +46,7 @@ def run_exe(ligand_filepath: Path, ccp4_dir_path: Path, arguments: argparse.Name
         pq_pdb_name = ligand_filepath.name.split(".")[0]
         pdb_id = pq_pdb_name.split('_')[1]
         residue_id = ligand_filepath.parent.parent.name
-        ccp4_filepath = (ccp4_dir_path / (pdb_id + '.ccp4')).resolve()
+        ccp4_filepath = (ccp4_dir_path / (pdb_id + '.ccp4.gz')).resolve()
         arguments.input_cycle_pdb = str(ligand_filepath.resolve())
         arguments.input_density_ccp4 = str(ccp4_filepath)
 
@@ -64,7 +64,7 @@ def get_filepaths(rootdir: Path, ccp4_dir: Path, ring_type: str):
         l = []
 
         all_ccp4_files = ccp4_dir.glob('**/*')
-        pdb_ids_for_which_ccp4_is_available = [x.stem for x in all_ccp4_files]
+        pdb_ids_for_which_ccp4_is_available = [x.stem.removesuffix('.ccp4') for x in all_ccp4_files]
         for f in Path(rootdir / 'validation_data' / ring_type / 'filtered_ligands').rglob("*"):
 
             if f.is_file():
