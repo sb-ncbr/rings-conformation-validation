@@ -11,7 +11,7 @@ python3 PrepareDataset.py -i "$INPUT_DATA_FOLDER" -o "$OUTPUT_FOLDER"
 exit_code=$?
 if [ $exit_code -ne 0 ]; then
     echo "Error: PrepareDataset failed with exit code $exit_code"
-    exit $?
+    exit $exit_code
 fi
 
 for r in "$CYCLOPENTANE" "$CYCLOHEXANE"; do
@@ -19,14 +19,14 @@ for r in "$CYCLOPENTANE" "$CYCLOHEXANE"; do
     exit_code=$?
     if [ $exit_code -ne 0 ]; then
         echo "Error: FilterDataset failed with exit code $exit_code"
-        exit $?
+        exit $exit_code
     fi
 
     python3 CreateTemplates.py -r "$r" -o "$OUTPUT_FOLDER" -i "$INPUT_DATA_FOLDER"
     exit_code=$?
     if [ $exit_code -ne 0 ]; then
         echo "Error: CreateTemplates failed with exit code $exit_code"
-        exit $?
+        exit $exit_code
     fi
 
     TEMPLATES_PATH="$OUTPUT_FOLDER/validation_data/$r/templates"
@@ -37,7 +37,7 @@ for r in "$CYCLOPENTANE" "$CYCLOHEXANE"; do
     exit_code=$?
     if [ $exit_code -ne 0 ]; then
         echo "Error: ConfComparer failed with exit code $exit_code"
-        exit $?
+        exit $exit_code
     fi
 done
 
@@ -45,7 +45,7 @@ python3 FilterDataset.py -r "$BENZENE" -o "$OUTPUT_FOLDER" -i "$INPUT_DATA_FOLDE
 exit_code=$?
     if [ $exit_code -ne 0 ]; then
         echo "Error: FilterDataset failed with exit code $exit_code"
-        exit $?
+        exit $exit_code
     fi
 
 # Benzenes are compared with templates for cyclohexane
@@ -56,10 +56,10 @@ python3 ConfComparer.py -t "$TEMPLATES_PATH" -i "$FILTERED_LIGANDS_PATH" -o "$CC
 exit_code=$?
     if [ $exit_code -ne 0 ]; then
         echo "Error: ConfComparer failed with exit code $exit_code"
-        exit $?
+        exit $exit_code
     fi
 
-CCP4="{$INPUT_DATA_FOLDER}/ccp4"
+CCP4="${INPUT_DATA_FOLDER}/ccp4"
 
 python3 electron_density_coverage_analysis/main.py "$OUTPUT_FOLDER" "$CCP4"
 
