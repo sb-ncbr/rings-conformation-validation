@@ -72,7 +72,7 @@ class Molecule:
         been processed and their conformation has been decided.
         """
         print("SUMMARY\n-------")
-        # Remove possible None-s from list from cases where file was ommited
+        # Remove possible None-s from list from cases where file was omitted
         Molecule.molecules = [x for x in Molecule.molecules if x is not None]
         total = len(Molecule.molecules)
         for conf in self.conformations:
@@ -163,9 +163,10 @@ class Molecule:
         """
         Validates whether all the atoms of a molecule have their name
         present in the names file and then creates the ordering
-        of atoms based on the order from the names file. In case of
-        duplicate names within the same index of atom position, error
-        out and cancel processing of this molecule as a result.
+        of atoms based on the order from the names file. In case of a duplicate
+        atom name found within a single ligand structure, this molecule is
+        marked as invalid and error is printed out. This is to remove
+        overlapping cycles from being tested for conformations.
         """
         atom_count = self.get_atom_count()
         new_lst = [None for _ in range(atom_count)]
@@ -173,7 +174,7 @@ class Molecule:
             for i in range(atom_count):
                 if atom.name in self.names[self.ligand][i]:
                     if new_lst[i] is not None:
-                        print(f"{atom.name} atom found twice!", file=stderr)
+                        print(f"{self.file_name}: omitted - {atom.name} atom found twice!", file=stderr)
                         self.is_valid = False
                         return
                     new_lst[i] = atom

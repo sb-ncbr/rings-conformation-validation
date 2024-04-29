@@ -92,9 +92,10 @@ class Atom(Point):
         self.chain_identifier = source[21]
 
         residue_sequence_num = source[22:26].lstrip()
-        if not residue_sequence_num.isnumeric():
-            raise InvalidSourceDataException(f"'{residue_sequence_num}' is not a valid residue sequencen number")
-        self.residue_sequence_num = int(residue_sequence_num)
+        try:
+            self.residue_sequence_num = int(residue_sequence_num)
+        except ValueError:
+            raise InvalidSourceDataException(f"'{residue_sequence_num}' is not a valid residue sequence number")
 
         self.res_insert_code = source[26]
 

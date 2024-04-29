@@ -64,8 +64,8 @@ class Config:
         lines = self.read_file()
 
         if len(lines) != 19:
-            print("Config file not loaded properly! Delete the `config.txt` file in the folder with main file and try "
-                  "again.")
+            print("Config file not loaded properly! Delete the `config.txt` file "
+                  "in the folder with main file and try again.")
             exit(-1)
 
         self.ch.t_in = self.process_line(lines[3])

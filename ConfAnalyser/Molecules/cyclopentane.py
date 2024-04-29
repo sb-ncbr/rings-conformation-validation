@@ -5,12 +5,13 @@ from Utils.angle import dihedral_angle
 
 
 class Cyclopentane(FiveAtomRing):
-    def __init__(self, source_line: list[str]):
+    def __init__(self, source_line: list[str], file_name: str):
         # Initialize the parent structure
         super().__init__(MoleculeType.Cyclopentane)
 
         # Set the needed parameters
         self.source_file: list[str] = source_line
+        self.set_file_name(file_name)
 
         self.basePlane = None
 

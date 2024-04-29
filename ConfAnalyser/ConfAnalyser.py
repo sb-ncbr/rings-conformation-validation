@@ -21,7 +21,7 @@ class ConfAnalyser:
 
     def __init__(self, paths_file: str, names_file: str,
                  molecule_type: MoleculeType, print_list: bool = False,
-                 print_summary: bool = False, print_all: bool = True,
+                 print_summary: bool = False, print_all: bool = False,
                  parallel: bool = False):
         """
         Driver class for ConfAnalyser.
@@ -46,7 +46,6 @@ class ConfAnalyser:
                            well on unix systems, on windows only works when ran
                            as a console application. Importing disables this.
         """
-
         self.paths_file = paths_file
         self.names_file = names_file
         self.molecule_type = molecule_type
@@ -81,7 +80,7 @@ class ConfAnalyser:
         Molecule.initialize(names)
 
         # Prepare the dataset to work on
-        data = [(file, names, cfg, self.molecule_type, PARALLEL) for file in files]
+        data = [(file, names, cfg, self.molecule_type, self.parallel) for file in files]
 
         # Run the analysis
         if self.parallel:
@@ -151,6 +150,9 @@ def argument_parser():
                                "of conformations among tested molecules.")
     optional.add_argument("-a", "--all", required=False, action="store_true",
                           help="Display both list and summary. Default option when neither -s or -l is used.")
+    extra = parser.add_argument_group('Extra')
+    extra.add_argument("-p", "--parallel", required=False, action="store_true",
+                          help="Allows processing of the data in multi-threaded mode")
     return parser.parse_args()
 
 def main():
@@ -170,11 +172,12 @@ def main():
 
     print_list = args.list
     print_summary = args.summary
+    # if both print_list and print_summary is False (no switches used), print all by default
     print_all = args.all or (not print_list and not print_summary)
+    parallel = args.parallel
 
-    ConfAnalyser(paths_file, names_file, molecule_type, print_list, print_summary, print_all)
+    ConfAnalyser(paths_file, names_file, molecule_type, print_list, print_summary, print_all, parallel)
 
 
 if __name__ == "__main__":
-    # Additional imports based on what is needed.
     main()

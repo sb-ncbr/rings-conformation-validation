@@ -5,12 +5,13 @@ from Molecules.Components.molecule import MoleculeType, Conformation
 
 
 class Cyclohexane(SixAtomRing):
-    def __init__(self, source_line: list[str]):
+    def __init__(self, source_line: list[str], file_name: str):
         # Initialize the parent structure
         super().__init__(MoleculeType.Cyclohexane)
 
         # Set the needed parameters
         self.source_file: list[str] = source_line
+        self.set_file_name(file_name)
 
         self.right_plane = None
         self.left_plane = None
