@@ -19,7 +19,7 @@ def statistic_RMSD(ring_type, base_dir):
 
 
 def addResolution(data_dir, ring_type, RMSD_data):
-    file_information_path = os.path.join(data_dir, 'PDB_INFORMATION.csv')
+    file_information_path = os.path.join(data_dir, 'PDB_information.csv')
     file2 = pd.read_csv(file_information_path, sep=';')
 
     RMSD_data['Entry ID_x'] = RMSD_data['Ring_ID'].str.extract(r'_(\w+)_\d+')
