@@ -109,16 +109,13 @@ def start_program(results_folder: Path, pq_cmd):
     logging.info(f"Running Pattern Query on CPU count: {CPU_COUNT}...")
 
     pq_process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, universal_newlines=True)
-    stdout, stderr = [stream.strip() for stream in pq_process.communicate()]
 
-    error_pattern = r"^\[.*?\] Error:"
-    for line in stdout.splitlines():
+    for line in pq_process.stdout:
+        error_pattern = r"^\[.*?\] Error:"
         if re.match(error_pattern, line):
             logging.error(f"Error while running Pattern Query {line}")
             sys.exit(1)
-
-    if stdout:
-        print(stdout)
+        print(line, end='')
 
 
 def prerequisites_are_met(input_dir: str, output_dir: str) -> bool:
