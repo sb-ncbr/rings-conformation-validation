@@ -74,6 +74,7 @@ This repository contains software workflow from the article by Bučeková *et al
 ## Using a small dataset to test the workflow
 
 If you want to test the workflow on a small dataset, execute the workflow in the same way, as described earlier, but add the -testing switch in step 4. With the switch, the workflow execution commands are:
+
 	- Windows
 		```
 		run_workflow.bat -testing user_input_dir user_output_dir
