@@ -26,7 +26,7 @@ def addResolution(data_dir, ring_type, RMSD_data):
     RMSD_data['Entry ID'] = RMSD_data['Entry ID_x'].str.upper()
 
     merged_resolution = pd.merge(RMSD_data,
-                                 file2[['Entry ID', 'Experimental Method', 'Deposition Date', 'Resolution (Å)']],
+                                 file2[['Entry ID', 'Experimental Method', 'Release Date', 'Resolution (A)']],
                                  how='left', left_on='Entry ID', right_on='Entry ID')
 
     merged_resolution.drop(['Entry ID_x'], axis=1, inplace=True)
@@ -34,7 +34,7 @@ def addResolution(data_dir, ring_type, RMSD_data):
     xray_merged_resolution = pd.DataFrame(columns=merged_resolution.columns)
     for index, row in merged_resolution.iterrows():
         methods = row['Experimental Method']
-        if isinstance(methods, str) and 'X-RAY DIFFRACTION' in methods.split(','):
+        if isinstance(methods, str) and 'X-RAY DIFFRACTION' in methods.split(', '):
             xray_merged_resolution = pd.concat([xray_merged_resolution, row.to_frame().transpose()], ignore_index=True)
 
     return xray_merged_resolution
@@ -61,35 +61,17 @@ def Summary(base_output_dir, ring_type, merged_coverage):
 
     if ring_type == 'cyclopentane':
         x = '5'
-        Sheet_1 = 'stats_resolution_2_or_less_coverage_5'
-        Sheet_2 = 'Resolution_2_or_less_Coverage_5'
-        Sheet_3 = 'Stat_Resol_2_or_less_Cover_5'
     elif ring_type == 'cyclohexane' or ring_type == 'benzene':
         x = '6'
-        Sheet_1 = 'stats_resolution_2_or_less_coverage_6'
-        Sheet_2 = 'Resolution_2_or_less_Coverage_6'
-        Sheet_3 = 'Stat_Resol_2_or_less_Cover_6'
-
-    def check_resolution(resolution):
-        if isinstance(resolution, float):
-            return resolution <= 2
-        values = resolution.split(',')
-        for value in values:
-            try:
-                if float(value.strip()) <= 2:
-                    return True
-            except ValueError:
-                pass
-        return False
 
     # Create a CSV file for rows where Resolution (Å) is equal or less than 2
     output_file_path_1 = os.path.join(output_folder, 'resolution_2_or_less.csv')
-    df_resolution_2_or_less = df[df['Resolution (Å)'].apply(check_resolution)]
+    df_resolution_2_or_less = df[df['Resolution (A)'] <= 2]
     df_resolution_2_or_less.to_csv(output_file_path_1, sep=';', index=False)
 
     # Create a CSV file for rows where Resolution (Å) is equal or less than 2 and Coverage is 5 or 6
-    output_file_path_2 = os.path.join(output_folder, f'resolution_2_or_less_coverage_{x}.csv')
-    df_resolution_2_or_less_coverage_x = df_resolution_2_or_less[df_resolution_2_or_less['Coverage'] == x]
+    output_file_path_2 = os.path.join(output_folder, 'resolution_2_or_less_all_covered.csv')
+    df_resolution_2_or_less_coverage_x = df[(df['Resolution (A)'] <= 2) & (df['Coverage'] == x)]
     df_resolution_2_or_less_coverage_x.to_csv(output_file_path_2, sep=';', index=False)
 
     # Create text files with statistics for different values in the Conformation column
@@ -130,7 +112,7 @@ def Summary(base_output_dir, ring_type, merged_coverage):
     stats_resolution_2_or_less_coverage_x_df.loc[len(stats_resolution_2_or_less_coverage_x_df)] = ['Total',
                                                                                                    total_values_resolution_2_or_less_coverage_x,
                                                                                                    100]
-    stats_resolution_2_or_less_coverage_x_df.to_csv(os.path.join(output_folder, Sheet_1), sep=' ', index=False,
+    stats_resolution_2_or_less_coverage_x_df.to_csv(os.path.join(output_folder, 'stats_resolution_2_or_less_all_covered'), sep=' ', index=False,
                                                     float_format='%.2f')
 
     # Create an Excel file with multiple sheets
@@ -138,15 +120,15 @@ def Summary(base_output_dir, ring_type, merged_coverage):
     with pd.ExcelWriter(excel_file_path, engine='xlsxwriter') as writer:
         df.to_excel(writer, sheet_name='Summary', index=False)
         df_resolution_2_or_less.to_excel(writer, sheet_name='Resolution_2_or_less', index=False)
-        df_resolution_2_or_less_coverage_x.to_excel(writer, sheet_name=Sheet_2, index=False)
+        df_resolution_2_or_less_coverage_x.to_excel(writer, sheet_name='Resolution_2_or_less_Covered', index=False)
         stats_input_file_df.to_excel(writer, sheet_name='Stat_summary', index=False)
         stats_resolution_2_or_less_df.to_excel(writer, sheet_name='Stat_Resol_2_or_less', index=False)
-        stats_resolution_2_or_less_coverage_x_df.to_excel(writer, sheet_name=Sheet_3, index=False)
+        stats_resolution_2_or_less_coverage_x_df.to_excel(writer, sheet_name='Stat_Resol_2_or_less_Covered', index=False)
     return excel_file_path
 
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description='Calculate RMSD statistics for CP or CH rings.')
+    parser = argparse.ArgumentParser(description='Calculate RMSD statistics for CP, CH or B rings.')
     parser.add_argument('-r', '--ring', choices=['cyclopentane', 'cyclohexane', 'benzene'], required=True,
                         help='Specify the ring type (cyclopentane, cyclohexane or benzene)')
     parser.add_argument('-o', '--output', type=str, required=True,
