@@ -72,8 +72,7 @@ This repository contains software workflow from the article by Bučeková et al.
 ### Alternative:
 
 0. **Run DownloadData.py**:
-    - Use File ID for the "input_data" directory in OneData as a positional argument
-    -  [LINK TO ONEDATA](https://doi.org/10.58074/hy79-qc22)
+    - Use File ID for the "input_data" directory in [OneData](https://doi.org/10.58074/hy79-qc22) as a positional argument
     - TODO: change FILE ID for real dataset in a code snippet below
         ```
         python DownloadData.py -d path/to/"user_input_dir" 00000000007ECDBE736861726547756964236133623365636535626131323133323532303238353237323438623439316133636864663563233432653234313133616330396634323834666630656235313763306539656131636865613232233630363962316339633839646164616332666562373139383633633437653639636862623462
@@ -100,7 +99,7 @@ This repository contains software workflow from the article by Bučeková et al.
         ```
 4. **Run ConfComparer.py**:
     - Run this script once for each ring type: (cylohexane | cyclopentane | benzene)
-    - For UNIX systems there is an extra argument: "-c mono" (cross-platform runner). Mono is required.
+    - For UNIX systems there is an extra argument: "-c mono" (cross-platform runner).
         ```
         python ConfComparer.py -t <output_dir>/validation_data/<ring>/templates -i <output_dir>/validation_data/<ring>/filtered_ligands -o <output_dir>/validation_data/<ring>/output
         ```
