@@ -75,14 +75,14 @@ This repository contains software workflow from the article by Bučeková *et al
 
 If you want to test the workflow on a small dataset, execute the workflow in the same way, as described earlier, but add the -testing switch in step 4. With the switch, the workflow execution commands are:
 
-	- Windows
-		```
-		run_workflow.bat -testing user_input_dir user_output_dir
-		```
-	- Linux:
-		```
-		bash run_workflow.sh -testing user_input_dir user_output_dir
-		```
+- Windows
+	```
+	run_workflow.bat -testing user_input_dir user_output_dir
+	```
+- Linux:
+	```
+	bash run_workflow.sh -testing user_input_dir user_output_dir
+	```
 
 ## License
 This project is licensed under the MIT License - see the [LICENSE](https://github.com/sb-ncbr/rings-conformation-validation/blob/main/LICENSE) file for details.
