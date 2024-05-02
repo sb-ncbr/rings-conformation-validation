@@ -51,70 +51,70 @@ This repository contains software workflow from the article by Bučeková et al.
    - Make sure your virtual environment is activated.
    - Run:
      ```
-     pip install gemmi==0.6.5 pandas==2.2.2 xlsxwriter
+     pip install requests gemmi==0.6.5 pandas==2.2.2 xlsxwriter
 
      ```
-     
-### Download the PDB copy
-   * Download the pdb dataset archive from [HERE](https://doi.org/10.58074/hy79-qc22) and extract it into the folder of your choice on your computer (but not into the project folder)
-
-### Download CCP4 files
-   * Change the directory to "electron_density_coverage_analysis"
-   * Create a folder "ccp4" inside this directory
-   * Download the ccp4 archive from [HERE](https://doi.org/10.58074/hy79-qc22) and extract it into "ccp4" folder you have just created
-    
-### Download Chemical Component Dictionary
-   * Download components.cif.gz into the project root folder "rings-conformation-validation". Do not extract the file from the archive.
-
 
 ## Executing program
+
+- Create a folder where data will be downloaded (it is recommended to store the data outside the project)
+- We will refer to the folder you have created as **"user_input_dir"** in further steps.
+- Make sure you are in the project root directory **(rings-conformation-validation)**
+- We will refer to the output folder as **"user_output_dir"**. Do not create it yourself.
+
+### Recommended:
 **Windows**
-    - Usage: run_workflow.bat <path\to\local\pdb> <path\to\output\dir>
+- Usage: run_workflow.bat path/to/"user_input_dir" path/to/"user_output_dir"
+
+**Unix**
+- Usage: bash run_workflow.sh path/to/"user_input_dir" path/to/"user_output_dir"
+
+### Alternative:
+
+0. **Run DownloadData.py**:
+    - Use File ID for the "input_data" directory in OneData as a positional argument
+    -  [LINK TO ONEDATA](https://doi.org/10.58074/hy79-qc22)
+    - TODO: change FILE ID for real dataset in a code snippet below
+        ```
+        python DownloadData.py -d path/to/"user_input_dir" 00000000007ECDBE736861726547756964236133623365636535626131323133323532303238353237323438623439316133636864663563233432653234313133616330396634323834666630656235313763306539656131636865613232233630363962316339633839646164616332666562373139383633633437653639636862623462
+        ```
 
 1. **Run PrepareDataset.py**:
-    - Navigate into project root folder "rings-conformation-validation".
-    - Before proceeding, make sure you have downloaded the copy of the PDB into your local machine. [Jump to instructions](#download-the-pdb-copy)
-    - Make sure you have components.cif.gz in your current working directory [Jump to instructions](#download-chemical-component-dictionary)
-    - [PQ Command Line version](https://webchem.ncbr.muni.cz/Platform/PatternQuery) (last version 1.1.23.12.27) is included in this project.
-      
+      - It prepares all datasets for three ring types at once.
         ```
-        python PrepareDataset.py -d path/to/local/pdb
+        python PrepareDataset.py -i path/to/"user_input_dir"/"input_data" -o path/to/"user_output_dir"
         ```
 2. **Run FilterDataset.py**:
-    - It accepts one argument --ring (-r): Ring type (cylohexane | cyclopentane | benzene)
+    - Run this script once for each ring type.
+    - Ring types: (cylohexane | cyclopentane | benzene)
 
         ```
-        python FilterDataset.py -r <ring>
+        python FilterDataset.py -r <ring> -i path/to/"user_input_dir"/"input_data" -o path/to/"user_output_dir"
         ```
 3. **Run CreateTemplates**:
-    - It accepts one argument --ring (-r): Ring type (cylohexane | cyclopentane | benzene)
+    - Run this script once for each ring type.
+    - Ring types: (cylohexane | cyclopentane )
 
         ```
-        python CreateTemplates.py -r <ring>
+        python CreateTemplates.py -r <ring> -i path/to/"user_input_dir"/"input_data" -o path/to/"user_output_dir"
         ```
 4. **Run ConfComparer.py**:
-    - For benzene ring run the script twice, fisrt time normally, the second time use templates from cyclohexane
-    - TODO: correct text
-    
+    - Run this script once for each ring type: (cylohexane | cyclopentane | benzene)
+    - For UNIX systems there is an extra argument: "-c mono" (cross-platform runner). Mono is required.
         ```
-        python ConfComparer.py -t validation_data/<ring>/templates -i validation_data/<ring>/filtered_ligands -o validation_data/<ring>/output
+        python ConfComparer.py -t <output_dir>/validation_data/<ring>/templates -i <output_dir>/validation_data/<ring>/filtered_ligands -o <output_dir>/validation_data/<ring>/output
         ```
+
  5. **Run analysis of electron density coverage**:
-    - Change the directory to <electron_density_coverage_analysis>
-    
-        ```py
-        cd electron_density_coverage_analysis
-        ```
-    - Before proceeding, make sure you have downloaded the CCP4 files into "ccp4" folder. [Jump to instructions](#download-ccp4-files)
    
         ```
-        python main.py validation_data
+        python electron_density_coverage_analysis/main.py path/to/"user_output_dir" path/to/"user_input_dir"/"input_data"/ccp4
         ```
 6. **Run RingAnalysisResult**:
-    - It accepts one argument --ring (-r): Ring type (cylohexane | cyclopentane | benzene)
+    - Run this script once for each ring type: (cylohexane | cyclopentane | benzene)
 
         ```
-        python RingAnalysisiResult.py -r <ring>
+        python RingAnalysisiResult.py -r <ring> -i path/to/"user_input_dir"/"input_data" -o path/to/"user_output_dir"
         ```
 
 ## License

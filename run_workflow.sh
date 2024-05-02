@@ -7,7 +7,20 @@ CYCLOPENTANE="cyclopentane"
 CYCLOHEXANE="cyclohexane"
 BENZENE="benzene"
 
-python3 PrepareDataset.py -i "$INPUT_DATA_FOLDER" -o "$OUTPUT_FOLDER"
+# TODO: update later!
+# for testing only
+DATA_FOLDER="input_data_small"
+# DATA_FOLDER="input_data"
+
+# $INPUT_DATA_FOLDER should be created
+python3 DownloadData.py -d "$INPUT_DATA_FOLDER" 00000000007ECDBE736861726547756964236133623365636535626131323133323532303238353237323438623439316133636864663563233432653234313133616330396634323834666630656235313763306539656131636865613232233630363962316339633839646164616332666562373139383633633437653639636862623462
+exit_code=$?
+if [ $exit_code -ne 0 ]; then
+    echo "Error: DownloadData failed with exit code $exit_code"
+    exit $exit_code
+fi
+
+python3 PrepareDataset.py -i "$INPUT_DATA_FOLDER/${DATA_FOLDER}" -o "$OUTPUT_FOLDER"
 exit_code=$?
 if [ $exit_code -ne 0 ]; then
     echo "Error: PrepareDataset failed with exit code $exit_code"
@@ -15,14 +28,14 @@ if [ $exit_code -ne 0 ]; then
 fi
 
 for r in "$CYCLOPENTANE" "$CYCLOHEXANE"; do
-    python3 FilterDataset.py -r "$r" -o "$OUTPUT_FOLDER" -i "$INPUT_DATA_FOLDER"
+    python3 FilterDataset.py -r "$r" -i "$INPUT_DATA_FOLDER/${DATA_FOLDER}" -o "$OUTPUT_FOLDER"
     exit_code=$?
     if [ $exit_code -ne 0 ]; then
         echo "Error: FilterDataset failed with exit code $exit_code"
         exit $exit_code
     fi
 
-    python3 CreateTemplates.py -r "$r" -o "$OUTPUT_FOLDER" -i "$INPUT_DATA_FOLDER"
+    python3 CreateTemplates.py -r "$r" -i "$INPUT_DATA_FOLDER/${DATA_FOLDER}" -o "$OUTPUT_FOLDER"
     exit_code=$?
     if [ $exit_code -ne 0 ]; then
         echo "Error: CreateTemplates failed with exit code $exit_code"
@@ -41,7 +54,7 @@ for r in "$CYCLOPENTANE" "$CYCLOHEXANE"; do
     fi
 done
 
-python3 FilterDataset.py -r "$BENZENE" -o "$OUTPUT_FOLDER" -i "$INPUT_DATA_FOLDER"
+python3 FilterDataset.py -r "$BENZENE" -i "$INPUT_DATA_FOLDER/${DATA_FOLDER}" -o "$OUTPUT_FOLDER"
 exit_code=$?
     if [ $exit_code -ne 0 ]; then
         echo "Error: FilterDataset failed with exit code $exit_code"
@@ -59,10 +72,10 @@ exit_code=$?
         exit $exit_code
     fi
 
-CCP4="${INPUT_DATA_FOLDER}/ccp4"
+CCP4="${INPUT_DATA_FOLDER}/${DATA_FOLDER}/ccp4"
 
 python3 electron_density_coverage_analysis/main.py "$OUTPUT_FOLDER" "$CCP4"
 
-python3 RingAnalysisResult.py -r "$CYCLOPENTANE" -o "$OUTPUT_FOLDER" -i "$INPUT_DATA_FOLDER"
-python3 RingAnalysisResult.py -r "$CYCLOHEXANE" -o "$OUTPUT_FOLDER" -i "$INPUT_DATA_FOLDER"
-python3 RingAnalysisResult.py -r "$BENZENE" -o "$OUTPUT_FOLDER" -i "$INPUT_DATA_FOLDER"
+python3 RingAnalysisResult.py -r "$CYCLOPENTANE" -i "${INPUT_DATA_FOLDER}/${DATA_FOLDER}" -o "$OUTPUT_FOLDER"
+python3 RingAnalysisResult.py -r "$CYCLOHEXANE" -i "${INPUT_DATA_FOLDER}/${DATA_FOLDER}" -o "$OUTPUT_FOLDER"
+python3 RingAnalysisResult.py -r "$BENZENE" -i "${INPUT_DATA_FOLDER}/${DATA_FOLDER}" -o "$OUTPUT_FOLDER"
