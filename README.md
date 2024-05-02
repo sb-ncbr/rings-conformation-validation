@@ -101,7 +101,7 @@ This repository contains software workflow from the article by Bučeková et al.
     - Run this script once for each ring type: (cylohexane | cyclopentane | benzene)
     - For UNIX systems there is an extra argument: "-c mono" (cross-platform runner).
         ```
-        python ConfComparer.py -t <output_dir>/validation_data/<ring>/templates -i <output_dir>/validation_data/<ring>/filtered_ligands -o <output_dir>/validation_data/<ring>/output
+        python ConfComparer.py -t path/to/"user_output_dir"/validation_data/<ring>/templates -i path/to/"user_output_dir"/validation_data/<ring>/filtered_ligands -o path/to/"user_output_dir"/validation_data/<ring>/output
         ```
 
  5. **Run analysis of electron density coverage**:
