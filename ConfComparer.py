@@ -387,9 +387,7 @@ if __name__ == "__main__":
     _Storage.print_summary = not args.print_summary_off
 
     logging.basicConfig(level=logging.INFO,
-                        format='%(asctime)s - %(levelname)s - %(message)s',
-                        # filename="validation_workflow.log",
-                        # filemode='a'
+                        format='%(asctime)s - %(levelname)s - %(message)s'
                         )
     logging.info(f"Starting ConfComparer on input data: {_Storage.input_dir}...\n"
                  f"Templates used: {_Storage.templates_dir}")

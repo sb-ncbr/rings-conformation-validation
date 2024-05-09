@@ -49,9 +49,7 @@ def run_filter(input_dir: str, ring: Ring, output_dir: str, document: cif.Docume
 
 def main(ring: str, output_path: str, input_path: str):
     logging.basicConfig(level=logging.INFO,
-                        format='%(asctime)s - %(levelname)s - %(message)s',
-                        # filename="validation_workflow.log",
-                        # filemode='a'
+                        format='%(asctime)s - %(levelname)s - %(message)s'
                         )
 
     ring = ring.upper()
