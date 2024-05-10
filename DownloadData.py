@@ -12,6 +12,7 @@ import random
 import re
 import threading
 import queue
+from multiprocessing import cpu_count
 
 try:
     import requests
@@ -455,7 +456,7 @@ def main():
     parser.add_argument(
         "-j",
         "--threads-number",
-        default=1,
+        default=cpu_count(),
         type=int,
         help="Number of threads for parallel downloading. Setting this parameter to a reasonable value can significantly reduce the overall download time.",
     )
