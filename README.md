@@ -52,7 +52,7 @@ This repository contains software workflow from the article by Bučeková *et al
    - Make sure your virtual environment is activated.
    - Run:
      ```
-     pip install requests gemmi==0.6.5 pandas==2.2.2 xlsxwriter
+     pip install requests gemmi==0.6.5 pandas==2.2.2 xlsxwriter requests==2.31.0
 
      ```
 
