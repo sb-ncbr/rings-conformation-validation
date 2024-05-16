@@ -173,6 +173,21 @@ def get_results(src: Path, dst: Path):
         sys.exit(1)
 
 
+def unzip_all(path_to_archives: Path) -> None:
+    lst = path_to_archives.glob('*.zip')
+    for zip_ in lst:
+        try:
+            unzip_file(zip_, path_to_archives)
+        except Exception as e:
+            logging.error(str(e))
+            sys.exit(1)
+
+
+def preprocess_data(data_path: Path) -> None:
+    unzip_all(data_path / PDB)
+    unzip_all(data_path / CCP4_DIR)
+
+
 def main(input_path: str, output_path: str):
     logging.basicConfig(level=logging.INFO,
                         format='%(asctime)s - %(levelname)s - %(message)s',
@@ -180,6 +195,8 @@ def main(input_path: str, output_path: str):
     logging.info('Starting PrepareDataset...')
     if not prerequisites_are_met(input_path, output_path):
         sys.exit(1)
+
+    preprocess_data(Path(input_path).resolve())
 
     document = read_component_dictionary(Path(input_path).resolve() / DEFAULT_DICT_NAME)
 
