@@ -27,7 +27,7 @@ fi
 INPUT_DATA_FOLDER="$1"
 OUTPUT_FOLDER="$2"
 
- $INPUT_DATA_FOLDER should be created
+# $INPUT_DATA_FOLDER should be created
 python3 DownloadData.py -d "$INPUT_DATA_FOLDER" $ONEDATA_ID
 exit_code=$?
 if [ $exit_code -ne 0 ]; then
