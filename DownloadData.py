@@ -456,7 +456,7 @@ def main():
     parser.add_argument(
         "-j",
         "--threads-number",
-        default=cpu_count(),
+        default=1,
         type=int,
         help="Number of threads for parallel downloading. Setting this parameter to a reasonable value can significantly reduce the overall download time.",
     )
