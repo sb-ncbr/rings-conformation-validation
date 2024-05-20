@@ -83,8 +83,6 @@ def main(ring: str, output_path: str, input_path: str):
 
     document = cif.read(path_to_comp_dict)
     run_filter(dir_with_patterns, Ring[ring], dir_for_filtered_patterns, document)
-    logging.info(f"Cleaning up {dir_with_patterns}")
-    shutil.rmtree(dir_with_patterns)
     logging.info(f'[{ring.capitalize()}]: FilterDataset has completed successfully')
 
 

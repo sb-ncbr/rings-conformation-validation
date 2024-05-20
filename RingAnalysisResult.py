@@ -1,4 +1,5 @@
 import logging
+import shutil
 from pathlib import Path
 import pandas as pd
 import argparse
@@ -156,3 +157,12 @@ if __name__ == '__main__':
     # Call Summary
     excel_file_path = Summary(base_dir, args.ring, coverage_result)
     logging.info(f"[{args.ring.capitalize()}]: RingAnalysisResult has completed successfully")
+
+    # remove not used output folder from the first step of workflow
+    logging.info("Cleaning up...")
+    path_to_unused_folder = Path(base_dir) / 'result'
+    try:
+        shutil.rmtree(path_to_unused_folder)
+        logging.info("Done.")
+    except Exception:
+        logging.info(f"Could not clean up unused folder {str(path_to_unused_folder)}")

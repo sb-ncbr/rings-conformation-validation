@@ -363,9 +363,6 @@ def main(ring: str, output_dir: str, input_dir: str):
         sys.exit(1)
 
     main_workflow_output_dir = (Path(output_dir) / MAIN_DIR).resolve()
-
-    # remove not used output folder from prev step
-    shutil.rmtree(main_workflow_output_dir / 'result')
     path_to_comp_dict: Path = (Path(input_dir) / DEFAULT_DICT_NAME).resolve()
     prepare_templates_dir(main_workflow_output_dir / ring.lower() / TEMPLATES_DIR)
     document = read_component_dictionary(path_to_comp_dict)
