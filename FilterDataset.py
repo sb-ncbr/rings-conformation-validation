@@ -20,7 +20,7 @@ def run_filter(input_dir: str, ring: Ring, output_dir: str, document: cif.Docume
                 continue
             total += 1
             filepath = os.path.join(root, file)
-            ligand, atom_names = get_data_from_pdb(filepath, ring)
+            ligand, atom_names = get_data_from_pdb(Path(filepath), ring)
             ligand_block = document.find_block(ligand)
 
             if ligand_block is None:
@@ -83,6 +83,8 @@ def main(ring: str, output_path: str, input_path: str):
 
     document = cif.read(path_to_comp_dict)
     run_filter(dir_with_patterns, Ring[ring], dir_for_filtered_patterns, document)
+    logging.info(f"Cleaning up {dir_with_patterns}")
+    shutil.rmtree(dir_with_patterns)
     logging.info(f'[{ring.capitalize()}]: FilterDataset has completed successfully')
 
 
