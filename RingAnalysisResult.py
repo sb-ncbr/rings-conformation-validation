@@ -159,10 +159,10 @@ if __name__ == '__main__':
     logging.info(f"[{args.ring.capitalize()}]: RingAnalysisResult has completed successfully")
 
     # remove not used output folder from the first step of workflow
-    logging.info("Cleaning up...")
     path_to_unused_folder = Path(base_dir) / 'result'
-    try:
+
+    if path_to_unused_folder.exists():
+        logging.info("Cleaning up...")
         shutil.rmtree(path_to_unused_folder)
         logging.info("Done.")
-    except Exception:
-        logging.info(f"Could not clean up unused folder {str(path_to_unused_folder)}")
+
