@@ -28,7 +28,7 @@ INPUT_DATA_FOLDER="$1"
 OUTPUT_FOLDER="$2"
 
 # $INPUT_DATA_FOLDER should be created
-python3 DownloadData.py -j 1 -d "$INPUT_DATA_FOLDER" $ONEDATA_ID
+python3 DownloadData.py -j 4 -d "$INPUT_DATA_FOLDER" $ONEDATA_ID
 exit_code=$?
 if [ $exit_code -ne 0 ]; then
     echo "Error: DownloadData failed with exit code $exit_code"

@@ -18,7 +18,7 @@ set "INPUT_DATA_FOLDER=%~1"
 set "OUTPUT_FOLDER=%~2"
 
 REM $INPUT_DATA_FOLDER should be created
-python DownloadData.py -j 1 -d !INPUT_DATA_FOLDER! !ONEDATA_ID!
+python DownloadData.py -j 4 -d !INPUT_DATA_FOLDER! !ONEDATA_ID!
 if "!errorlevel!" NEQ "0" (
      exit /b !errorlevel!
 )
