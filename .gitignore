@@ -6,6 +6,7 @@ venv/
 *.cif
 *.html
 *.json
+*.ccp4
 *.log
 *.zip
 *.png

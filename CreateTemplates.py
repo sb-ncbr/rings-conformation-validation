@@ -1,10 +1,8 @@
 import math
-import os
 import sys
 import shutil
 import tempfile
 import logging
-from csv import reader, writer
 from pathlib import Path
 
 from ConfAnalyser import ConfAnalyser
@@ -52,12 +50,18 @@ def extract_rmsd(tmp: Path):
 
 
 def sort_rmsd(tmp: Path):
-    with open(tmp / 'extracted_rmsd.csv', 'r', newline='\n') as f, \
-            open(tmp / 'rmsd_sorted.csv', 'w', newline='\n') as out:
-        csv1 = reader(f, delimiter=';', doublequote=False)
-        next(csv1, None)
-        csv_writer = writer(out, delimiter=';', escapechar='\\', doublequote=False)
-        csv_writer.writerows(sorted(csv1, key=lambda x: x[1], reverse=True))
+    rows = []
+    with open(tmp / 'extracted_rmsd.csv', 'r') as f:
+        _ = f.readline().strip().split(';')
+
+        for line in f:
+            rows.append(line.strip().split(';'))
+
+    rows.sort(key=lambda x: x[1], reverse=True)
+
+    with open(tmp / 'rmsd_sorted.csv', 'w') as out:
+        for row in rows:
+            out.write(';'.join(row) + '\n')
 
 
 def remove_outliers(lines_count, tmp: Path):
@@ -93,10 +97,11 @@ def get_paths(ring: Ring, output_file: Path, path_to_tmp_dir: Path, main_workflo
     with open(input_file, 'r') as in_file, open(output_file, 'w') as out:
 
         for line in in_file.readlines():
-            name, *_ = line.split(';')
+            split_, *_ = line.split(';')
+            name = split_.strip('"')
             ligand_name = extract_letters_before_underscore(name)
             if ligand_name is None:
-                logging.error(f"Wrong filename format of {name}. Skipping...")
+                logging.error(f"Wrong filename format of {name}. Skipping line {line}...")
                 continue
             p = main_workflow_output_dir / ring.name.lower() / FILTERED_DATA / ligand_name / "patterns" / (name + '.pdb')
             out.write(str(p) + '\n')
@@ -239,7 +244,6 @@ def run_conf_analyser(ring: Ring, main_workflow_output_dir: Path, document: cif.
     # Prepare input files
     logging.info("Creating input files for ConfAnalyser...")
     with tempfile.TemporaryDirectory() as tmp_str:
-        # print(f'TMP: {type(tmp_str)} {tmp_str}')
         tmp = Path(tmp_str)
         paths_to_pdbs_path = tmp / 'paths_to_pdbs.txt'
         atom_names_path = tmp / 'atom_names.txt'
@@ -296,7 +300,6 @@ def run_conf_analyser(ring: Ring, main_workflow_output_dir: Path, document: cif.
             lines_count = len(result_dict[conf])
 
             while lines_count > 1:
-
                 try:
                     run_site_binder(paths_to_pdbs_for_curr_conf, SB_AVG, tmp)
                 except Exception as e:
@@ -385,7 +388,7 @@ if __name__ == "__main__":
                                         f"conformations")
     required = parser.add_argument_group('required named arguments')
     required.add_argument('-r', '--ring', required=True, type=str,
-                          help=f'Choose the target ring type. Currently supported:{os.linesep}'
+                          help=f'Choose the target ring type. Currently supported:\n'
                                f'{[e.name for e in Ring]}')
     required.add_argument('-o', '--output', type=str, required=True,
                           help='Path to the output directory. Should be the same as in the previous step.')
