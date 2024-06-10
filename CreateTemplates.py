@@ -44,7 +44,14 @@ def extract_rmsd(tmp: Path):
 
     with open(tmp / 'rmsd.csv', 'r') as f, open(tmp / 'extracted_rmsd.csv', 'w') as out:
         for line in f.readlines():
-            name, rmsd, *_ = line.split(',')
+            line_chunks = line.split(',')
+            name, rmsd = "", ""
+            if len(line_chunks) == 7:
+                name, rmsd, *_ = line_chunks
+            else:
+                name, rmsd_1, rmsd_2, *_ = line_chunks
+                rmsd = ".".join([rmsd_1, rmsd_2])
+
             new_line = ';'.join([name, rmsd])
             out.write("".join([new_line, '\n']))
 
