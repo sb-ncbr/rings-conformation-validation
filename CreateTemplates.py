@@ -166,7 +166,9 @@ def validate_atoms_order(ligand_block: cif.Block, input_atoms: tuple[str, ...], 
 
 def correct_atoms_order(bonds: set[tuple[str, str]]) -> tuple[str, ...]:
     result = []
-    bonds_copy = bonds.copy()
+    bonds_list = list(bonds)
+    bonds_list.sort()
+    bonds_copy = bonds_list.copy()
     first, last = bonds_copy.pop()
     result.append(first)
 
