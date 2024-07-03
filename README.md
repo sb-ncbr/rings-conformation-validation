@@ -3,11 +3,11 @@
 ## Description
 This repository contains software workflow from the article by Bučeková *et al*. If you found this workflow, or any of its parts, to be useful, please cite the following article:
 
->BUČEKOVÁ Gabriela, Viktoriia DOSHCHENKO, Aliaksei CHARESHNEU, Jana PORUBSKÁ, Michal PAJTINKA, Michal OLEKSIK, Tomáš SVOBODA, Vladimír HORSKÝ, and Radka SVOBODOVÁ. *In preparation*. 2024.
+>BUČEKOVÁ Gabriela, Viktoriia DOSHCHENKO, Aliaksei CHARESHNEU, Jana PORUBSKÁ, Michal PAJTINKA, Michal OLEKSIK, Tomáš SVOBODA, Vladimír HORSKÝ, and Radka SVOBODOVÁ. *Rare ring conformations in PDB: Facts or wishful thinking?* bioRχiv, 2024. Available from: https://doi.org/10.1101/2024.06.20.598822
 
 ## Prerequisites
-- Python 3.10 available in the PATH environment
-  - a binary installer is available from [here](https://www.python.org/downloads/release/python-31011/)
+- Python 3.12.3 available in the PATH environment
+  - a binary installer is available from [here](https://www.python.org/downloads/release/python-3123/)
 - .NET 4.0 or newer (Windows only)
 - Mono 6.12.0.200 or newer (non-Windows operating systems only)
   - installation instructions are available [here](https://www.mono-project.com/download/stable)
