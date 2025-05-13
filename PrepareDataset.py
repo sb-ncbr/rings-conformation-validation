@@ -43,9 +43,9 @@ def extract_ligand_names(doc: cif.Document) -> Dict[Ring, List[str]]:
 
             ligand_name = ligand_block.find_value('_chem_comp.id')
 
-            if len(ligand_name) > 3:
-                logging.warning(f"The ligand name is longer than allowed three characters. Skipping {ligand_name}...")
-                continue
+            # if len(ligand_name) > 3:
+            #     logging.warning(f"The ligand name is longer than allowed three characters. Skipping {ligand_name}...")
+            #     continue
 
             if str(ligand_name) in ('PHE', 'TYR', 'TRP'):
                 continue

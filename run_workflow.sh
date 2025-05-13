@@ -42,50 +42,48 @@ if [ $exit_code -ne 0 ]; then
     exit $exit_code
 fi
 
-for r in "$CYCLOPENTANE" "$CYCLOHEXANE"; do
-    python3 FilterDataset.py -r "$r" -i "$INPUT_DATA_FOLDER/${DATA_FOLDER}" -o "$OUTPUT_FOLDER"
-    exit_code=$?
-    if [ $exit_code -ne 0 ]; then
-        echo "Error: FilterDataset failed with exit code $exit_code"
-        exit $exit_code
-    fi
 
-    python3 CreateTemplates.py -r "$r" -i "$INPUT_DATA_FOLDER/${DATA_FOLDER}" -o "$OUTPUT_FOLDER"
-    exit_code=$?
-    if [ $exit_code -ne 0 ]; then
-        echo "Error: CreateTemplates failed with exit code $exit_code"
-        exit $exit_code
-    fi
 
-    TEMPLATES_PATH="$OUTPUT_FOLDER/validation_data/$r/templates"
-    FILTERED_LIGANDS_PATH="$OUTPUT_FOLDER/validation_data/$r/filtered_ligands"
-    CC_OUTPUT_PATH="$OUTPUT_FOLDER/validation_data/$r/output"
 
-    python3 ConfComparer.py -t "$TEMPLATES_PATH" -i "$FILTERED_LIGANDS_PATH" -o "$CC_OUTPUT_PATH" -c mono
-    exit_code=$?
-    if [ $exit_code -ne 0 ]; then
-        echo "Error: ConfComparer failed with exit code $exit_code"
-        exit $exit_code
-    fi
-done
-
-python3 FilterDataset.py -r "$BENZENE" -i "$INPUT_DATA_FOLDER/${DATA_FOLDER}" -o "$OUTPUT_FOLDER"
+# cyclohexane
+python3 FilterDataset.py -r "cyclohexane" -i "$INPUT_DATA_FOLDER/${DATA_FOLDER}" -o "$OUTPUT_FOLDER"
 exit_code=$?
-    if [ $exit_code -ne 0 ]; then
-        echo "Error: FilterDataset failed with exit code $exit_code"
-        exit $exit_code
-    fi
+if [ $exit_code -ne 0 ]; then
+    echo "Error: FilterDataset failed with exit code $exit_code"
+    exit $exit_code
+fi
+FILTERED_LIGANDS_PATH="$OUTPUT_FOLDER/validation_data/cyclohexane/filtered_ligands"
+CC_OUTPUT_PATH="$OUTPUT_FOLDER/validation_data/cyclohexane/output"
+mkdir "$CC_OUTPUT_PATH"
+python3 SelectConformation.py "cyclohexane" "$FILTERED_LIGANDS_PATH" "$CC_OUTPUT_PATH"
 
-# Benzenes are compared with templates for cyclohexane
-TEMPLATES_PATH="$OUTPUT_FOLDER/validation_data/$CYCLOHEXANE/templates"
-FILTERED_LIGANDS_PATH="$OUTPUT_FOLDER/validation_data/$BENZENE/filtered_ligands"
-CC_OUTPUT_PATH="$OUTPUT_FOLDER/validation_data/$BENZENE/output"
-python3 ConfComparer.py -t "$TEMPLATES_PATH" -i "$FILTERED_LIGANDS_PATH" -o "$CC_OUTPUT_PATH" -c mono
+
+# cyclopentane
+python3 FilterDataset.py -r "cyclopentane" -i "$INPUT_DATA_FOLDER/${DATA_FOLDER}" -o "$OUTPUT_FOLDER"
 exit_code=$?
-    if [ $exit_code -ne 0 ]; then
-        echo "Error: ConfComparer failed with exit code $exit_code"
-        exit $exit_code
-    fi
+if [ $exit_code -ne 0 ]; then
+    echo "Error: FilterDataset failed with exit code $exit_code"
+    exit $exit_code
+fi
+FILTERED_LIGANDS_PATH="$OUTPUT_FOLDER/validation_data/cyclopentane/filtered_ligands"
+CC_OUTPUT_PATH="$OUTPUT_FOLDER/validation_data/cyclopentane/output"
+mkdir "$CC_OUTPUT_PATH"
+python3 SelectConformation.py "cyclopentane" "$FILTERED_LIGANDS_PATH" "$CC_OUTPUT_PATH"
+
+
+# benzene
+# in directory QM_optimised_templates/benzene is file flat.pdb for benzene and another conformations for cyclohexane
+python3 FilterDataset.py -r "benzene" -i "$INPUT_DATA_FOLDER/${DATA_FOLDER}" -o "$OUTPUT_FOLDER"
+exit_code=$?
+if [ $exit_code -ne 0 ]; then
+    echo "Error: FilterDataset failed with exit code $exit_code"
+    exit $exit_code
+fi
+FILTERED_LIGANDS_PATH="$OUTPUT_FOLDER/validation_data/benzene/filtered_ligands"
+CC_OUTPUT_PATH="$OUTPUT_FOLDER/validation_data/benzene/output"
+mkdir "$CC_OUTPUT_PATH"
+python3 SelectConformation.py "benzene" "$FILTERED_LIGANDS_PATH" "$CC_OUTPUT_PATH"
+
 
 CCP4="${INPUT_DATA_FOLDER}/${DATA_FOLDER}/ccp4"
 
