@@ -35,7 +35,6 @@ def run_filter(input_dir: str, ring: Ring, output_dir: str, document: cif.Docume
 
                 # ligand name can be up to 3 chars
                 if os.path.basename(filepath)[len(ligand)] != '_':
-                    # assigns a new unique name for the purposes of following analysis
                     new_name_path = os.path.join(output_pdb_dir,
                                                  ligand + '_' + os.path.basename(filepath))
                 else:

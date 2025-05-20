@@ -12,9 +12,13 @@ def statistic_RMSD(ring_type, base_dir):
     RMSD_data = pd.read_csv(file_path, delimiter=';', header=0)
     RMSD_data = RMSD_data.dropna(axis=1)
 
-    values_columns = RMSD_data.columns[2:]
+    if ring_type == "cyclopentane":
+        end_index = 5
+    elif ring_type in ["cyclohexane", "benzene"]:
+        end_index = 7
+    values_columns = RMSD_data.columns[2: end_index]
     RMSD_data['MinValue'] = RMSD_data[values_columns].min(axis=1)
-    RMSD_data['Conformation'] = RMSD_data[values_columns].idxmin(axis=1)
+    RMSD_data['RMSD_Conformation'] = RMSD_data[values_columns].idxmin(axis=1)
 
     return RMSD_data
 

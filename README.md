@@ -8,7 +8,6 @@ This repository contains software workflow from the article by Bučeková *et al
 ## Prerequisites
 - Python 3.12.3 available in the PATH environment
   - a binary installer is available from [here](https://www.python.org/downloads/release/python-3123/)
-- Python packages Scipy 1.15.2, Numpy 2.1.3, Numba 0.61.0 and Biopython 1.85 which could be installed via [Anaconda](https://anaconda.org/) 
 - .NET 4.0 or newer (Windows only)
 - Mono 6.12.0.200 or newer (non-Windows operating systems only)
   - installation instructions are available [here](https://www.mono-project.com/download/stable)
@@ -58,7 +57,7 @@ This repository contains software workflow from the article by Bučeková *et al
    - Make sure your virtual environment is activated.
    - Run:
      ```
-     pip install gemmi==0.6.5 pandas==2.2.2 xlsxwriter requests==2.32.3
+     pip install gemmi==0.6.5 pandas==2.2.2 xlsxwriter requests==2.32.3 Scipy==1.15.2 Numpy==2.1.3 Numba==0.61.0 Biopython==1.85
 
      ```
 

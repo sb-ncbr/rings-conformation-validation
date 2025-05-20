@@ -120,6 +120,7 @@ class Cycle:
                 tr = -1
             self.theta1 = theta[0] * tr
             self.theta2 = theta[1] * tr
+            self.theta3 = None
         if len(theta) == 3:
             tr = 1
             if theta[2] < 0:
@@ -191,15 +192,11 @@ for cycle in cycles:
             best_achieved_hr_distance = hr_distance
             cycle.conformation = conformation
         cycle.rmsds[conformation] = superimpose(sup, QM_template.atoms, cycle.atoms)
-with open(f"{output_dir}/results_individual_molecules.txt", "w") as output_file:
-    for cycle in cycles:
-        item1 = cycle.file.split("/")[-1].split("_")[0]
-        item2 = cycle.file.split("/")[-1].split(".")[0]
-        output_file.write(f"[{item1}] {item2}: {cycle.conformation.upper()}\n")
+
 with open(f"{output_dir}/result_rmsd_chart.csv", "w") as output_file_rmsd:
-    output_file_rmsd.write("Ligand_name;Ring_ID;" + ";".join([conformation.upper() for conformation in sorted(QM_templates.keys())]) + "\n")
+    output_file_rmsd.write("Ligand_name;Ring_ID;" + ";".join([conformation.upper() for conformation in sorted(QM_templates.keys())]) + ";Conformation;Theta1;Theta2;Theta3" + "\n")
     for cycle in cycles:
         item1 = cycle.file.split("/")[-1].split("_")[0]
         item2 = cycle.file.split("/")[-1].split(".")[0]
-        output_file_rmsd.write(f"{item1};{item2};{';'.join([str(round(float(cycle.rmsds[conformation]), 3)) for conformation in sorted(QM_templates.keys())])}\n")
+        output_file_rmsd.write(f"{item1};{item2};{';'.join([str(round(float(cycle.rmsds[conformation]), 3)) for conformation in sorted(QM_templates.keys())])};{cycle.conformation.upper()};{cycle.theta1};{cycle.theta2};{cycle.theta3}\n")
 print(f"Selection of conformation for {type_of_cycle} cycles has completed successfully.")
