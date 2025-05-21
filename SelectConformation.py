@@ -5,6 +5,7 @@ from scipy.optimize import shgo
 from numba import jit
 from sys import argv
 import math
+from pathlib import Path
 
 
 def cross(a,b):
@@ -177,8 +178,8 @@ for cycle_file in glob(f"{filtered_ligands_path}/*/*/*.pdb"):
     cycles.append(Cycle(cycle_file))
 QM_templates = load_templates(glob(f"QM_optimised_templates/{type_of_cycle}/*.pdb"))
 for cycle in cycles:
-    item1 = cycle.file.split("/")[-1].split("_")[0]
-    item2 = cycle.file.split("/")[-1].split(".")[0]
+    item1 = Path(cycle.file).name.split("_")[0]
+    item2 = Path(cycle.file).name.split(".")[0]
     print(f"Selection of conformation for {item1}, {item2}")
     cycle.rmsds = {}
     best_achieved_hr_distance = 1000 # hill-reilly
@@ -196,7 +197,7 @@ for cycle in cycles:
 with open(f"{output_dir}/result_rmsd_chart.csv", "w") as output_file_rmsd:
     output_file_rmsd.write("Ligand_name;Ring_ID;" + ";".join([conformation.upper() for conformation in sorted(QM_templates.keys())]) + ";Conformation;Theta1;Theta2;Theta3" + "\n")
     for cycle in cycles:
-        item1 = cycle.file.split("/")[-1].split("_")[0]
-        item2 = cycle.file.split("/")[-1].split(".")[0]
+        item11 = Path(cycle.file).name.split("_")[0]
+        item22 = Path(cycle.file).name.split(".")[0]
         output_file_rmsd.write(f"{item1};{item2};{';'.join([str(round(float(cycle.rmsds[conformation]), 3)) for conformation in sorted(QM_templates.keys())])};{cycle.conformation.upper()};{cycle.theta1};{cycle.theta2};{cycle.theta3}\n")
 print(f"Selection of conformation for {type_of_cycle} cycles has completed successfully.")
