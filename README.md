@@ -1,65 +1,51 @@
 # Workflow for validation of rings' conformation in ligands
 
 ## Description
-This repository contains software workflow from the article by Bučeková *et al*. If you found this workflow, or any of its parts, to be useful, please cite the following article:
-
->BUČEKOVÁ Gabriela, Viktoriia DOSHCHENKO, Aliaksei CHARESHNEU, Jana PORUBSKÁ, Michal PAJTINKA, Michal OLEKSIK, Tomáš SVOBODA, Vladimír HORSKÝ, and Radka SVOBODOVÁ. *Rare ring conformations in PDB: Facts or wishful thinking?* bioRχiv, 2024. Available from: https://doi.org/10.1101/2024.06.20.598822
+This repository contains software workflow from the article by Bučeková *et al* *Analysis of cyclopentane, cyclohexane and benzene conformations in ligands for PDB x-ray structures* that has been submitted to the Journal of Cheminformatics.
 
 ## Prerequisites
 - Python 3.12.3 available in the PATH environment
-  - a binary installer is available from [here](https://www.python.org/downloads/release/python-3123/)
-- .NET 4.0 or newer (Windows only)
+  - a binary installer is available from <a href="https://www.python.org/downloads/release/python-3123/" target="_blank">here</a>
 - Mono 6.12.0.200 or newer (non-Windows operating systems only)
-  - installation instructions are available [here](https://www.mono-project.com/download/stable)
+  - installation instructions are available <a href="https://www.mono-project.com/download/stable" target="_blank">here</a>
 - git (or a compatible alternative) (only if you wish to clone the workflow's repository)
-- 600 GB of free space for input data
+- 1 TB of free space for input data
 
 ## Getting Started
 
 1. **Clone the Project Repository (Recommended)**:
-   - Open a terminal or a command prompt.
-   - Navigate to the directory where you want to clone the project.
-   - Run:
-     ```
-     git clone https://github.com/sb-ncbr/rings-conformation-validation.git
-     ```
-   - Navigate into the cloned project directory:
-     ```
-     cd rings-conformation-validation
-     ```
-   
-   **Alternative: Download the workflow repository as a ZIP archive**:
-   - If you're not familiar with Git or GitHub, you can download the whole workflow repository as a ZIP archive from [here](https://github.com/sb-ncbr/rings-conformation-validation/archive/refs/heads/main.zip).
-   - Once downloaded, extract the ZIP archive to a directory on your computer.
-   - Open a terminal or a command prompt inside the project directory (rings-conformation-validation).
+  - Open a terminal or a command prompt.
+  - Navigate to the directory where you want to clone the project.
+  - Run:
+    ```
+    git clone https://github.com/sb-ncbr/rings-conformation-validation.git
+    ```
+  - Navigate into the cloned project directory:
+    ```
+    cd rings-conformation-validation
+    ```
+  
+  **Alternative: Download the workflow repository as a ZIP archive**:
+  - If you're not familiar with Git or GitHub, you can download the whole workflow repository as a ZIP archive from [here](https://github.com/sb-ncbr/rings-conformation-validation/archive/refs/heads/main.zip).
+  - Once downloaded, extract the ZIP archive to a directory on your computer.
+  - Open a terminal or a command prompt inside the project directory (rings-conformation-validation).
 
 2. **Set up Virtual Environment (Optional but Recommended)**:
-   - Create a virtual environment named `.venv`:
-     - **Windows Command Prompt**:
-       ```
-       python -m venv .venv
-       ```
-     - **Windows Git Bash / Windows WSL / macOS / Linux**:
-       ```
-       python3 -m venv .venv
-       ```
-   - Activate the virtual environment:
-     - **Windows Command Prompt**:
-       ```
-       .venv\Scripts\activate
-       ```
-     - **Windows Git Bash / Windows WSL / macOS / Linux**:
-       ```
-       source .venv/bin/activate
-       ```
+  - Create a virtual environment named `.venv`:
+    ```
+    python3 -m venv .venv
+    ```
+  - Activate the virtual environment:
+    ```
+    source .venv/bin/activate
+    ```
 
 3. **Install Required Packages**:
    - Make sure your virtual environment is activated.
    - Run:
-     ```
-     pip install gemmi==0.6.5 pandas==2.2.2 xlsxwriter requests==2.32.3 Scipy==1.15.2 Numpy==2.1.3 Numba==0.61.0 Biopython==1.85
-
-     ```
+    ```
+    pip install gemmi==0.6.5 pandas==2.2.2 xlsxwriter requests==2.32.3 Scipy==1.15.2 Numpy==2.1.3 Numba==0.61.0 Biopython==1.85
+    ```
 
 ## Executing the workflow
 
@@ -67,27 +53,17 @@ This repository contains software workflow from the article by Bučeková *et al
 2. Create or choose a directory where the output of the workflow will be stored (e.g. **user_output_dir**).
 3. Make sure you are in the project root directory **(rings-conformation-validation)**.
 4. Execute the workflow:
-	- **Windows:**
-		```
-		run_workflow.bat user_input_dir user_output_dir
-		```
-	- **Linux:**
-		```
-		bash run_workflow.sh user_input_dir user_output_dir
-		```
+  ```
+  bash run_workflow.sh user_input_dir user_output_dir
+  ```
 
 ## Using a small dataset to test the workflow
 
 If you want to test the workflow on a small dataset, execute the workflow in the same way as described earlier, but add the -testing switch in step 4. With the switch, the workflow execution commands are:
 
-- **Windows**
-	```
-	run_workflow.bat -testing user_input_dir user_output_dir
-	```
-- **Linux:**
-	```
-	bash run_workflow.sh -testing user_input_dir user_output_dir
-	```
+```
+bash run_workflow.sh -testing user_input_dir user_output_dir
+```
 
 ## License
 This project is licensed under the MIT License - see the [LICENSE](https://github.com/sb-ncbr/rings-conformation-validation/blob/main/LICENSE) file for details.
