@@ -17,13 +17,13 @@ This repository contains the software workflow from the article by Bučeková *e
 	- Open a terminal or a command prompt.
 	- Navigate to the directory where you want to clone the project.
 	- Run:
-	```
-	git clone https://github.com/sb-ncbr/rings-conformation-validation.git
-	```
+		```
+		git clone https://github.com/sb-ncbr/rings-conformation-validation.git
+		```
 	- Navigate into the cloned project directory:
-	```
-	cd rings-conformation-validation
-	```
+		```
+		cd rings-conformation-validation
+		```
 	
 	**Alternative: Download the workflow repository as a ZIP archive**:
 	- If you're not familiar with Git or GitHub, you can download the whole workflow repository as a ZIP archive from [here](https://github.com/sb-ncbr/rings-conformation-validation/archive/refs/heads/main.zip).
@@ -32,20 +32,20 @@ This repository contains the software workflow from the article by Bučeková *e
 
 2. **Set up Virtual Environment (Optional but Recommended)**:
 	- Create a virtual environment named `.venv`:
-	```
-	python3 -m venv .venv
-	```
+		```
+		python3 -m venv .venv
+		```
 	- Activate the virtual environment:
-	```
-	source .venv/bin/activate
-	```
+		```
+		source .venv/bin/activate
+		```
 
 3. **Install Required Packages**:
 	- Make sure your virtual environment is activated.
 	- Run:
-	```
-	pip install gemmi==0.6.5 pandas==2.2.2 xlsxwriter requests==2.32.3 Scipy==1.15.2 Numpy==2.1.3 Numba==0.61.0 Biopython==1.85
-	```
+		```
+		pip install gemmi==0.6.5 pandas==2.2.2 xlsxwriter requests==2.32.3 Scipy==1.15.2 Numpy==2.1.3 Numba==0.61.0 Biopython==1.85
+		```
 
 ## Executing the workflow
 
