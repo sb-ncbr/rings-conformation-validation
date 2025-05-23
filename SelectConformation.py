@@ -172,39 +172,36 @@ filtered_ligands_path = argv[2]
 output_dir = argv[3]
 
 sup = PDB.Superimposer()
-
-cycles = []
 excluded_rings = []
-for cycle_file in glob(f"{filtered_ligands_path}/*/*/*.pdb"):
-    try:
-        cycles.append(Cycle(cycle_file))
-    except:
-        excluded_rings.append(cycle_file)
+QM_templates = load_templates(glob(f"QM_optimised_templates/{type_of_cycle}/*.pdb"))
+
+with open(f"{output_dir}/result_rmsd_chart.csv", "w") as output_file:
+
+    output_file.write("Ligand_name;Ring_ID;" + ";".join([conformation.upper() for conformation in sorted(QM_templates.keys())]) + ";Conformation;Theta1;Theta2;Theta3" + "\n")
+
+    for cycle_file in glob(f"{filtered_ligands_path}/*/*/*.pdb"):
+        try:
+            cycle = Cycle(cycle_file)
+            item1 = Path(cycle.file).name.split("_")[0]
+            item2 = Path(cycle.file).name.split(".")[0]
+            print(f"Selection of conformation for {item1}, {item2}")
+            cycle.rmsds = {}
+            best_achieved_hr_distance = 1000 # hill-reilly
+            for conformation in QM_templates.keys():
+                QM_template = QM_templates[conformation]
+                if type_of_cycle in ["cyclohexane", "benzene"]:
+                    hr_distance = math.dist((QM_template.theta1, QM_template.theta2, QM_template.theta3), (cycle.theta1, cycle.theta2, cycle.theta3))
+                elif type_of_cycle == "cyclopentane":
+                    hr_distance = math.dist((QM_template.theta1, QM_template.theta2), (cycle.theta1, cycle.theta2))
+                if hr_distance < best_achieved_hr_distance:
+                    best_achieved_hr_distance = hr_distance
+                    cycle.conformation = conformation
+                cycle.rmsds[conformation] = superimpose(sup, QM_template.atoms, cycle.atoms)
+            output_file.write(f"{item1};{item2};{';'.join([str(round(float(cycle.rmsds[conformation]), 3)) for conformation in sorted(QM_templates.keys())])};{cycle.conformation.upper()};{cycle.theta1};{cycle.theta2};{cycle.theta3}\n")
+        except:
+            excluded_rings.append(cycle_file)
+
+
+print(f"Selection of conformation for {type_of_cycle} cycles has completed successfully. {len(excluded_rings)} cycles excluded.")
 for excluded_ring in excluded_rings:
     print(f"EXCLUDED: {excluded_ring}")
-print(f"Number of excluded rings: {len(excluded_rings)}")
-QM_templates = load_templates(glob(f"QM_optimised_templates/{type_of_cycle}/*.pdb"))
-for cycle in cycles:
-    item1 = Path(cycle.file).name.split("_")[0]
-    item2 = Path(cycle.file).name.split(".")[0]
-    print(f"Selection of conformation for {item1}, {item2}")
-    cycle.rmsds = {}
-    best_achieved_hr_distance = 1000 # hill-reilly
-    for conformation in QM_templates.keys():
-        QM_template = QM_templates[conformation]
-        if type_of_cycle in ["cyclohexane", "benzene"]:
-            hr_distance = math.dist((QM_template.theta1, QM_template.theta2, QM_template.theta3), (cycle.theta1, cycle.theta2, cycle.theta3))
-        elif type_of_cycle == "cyclopentane":
-            hr_distance = math.dist((QM_template.theta1, QM_template.theta2), (cycle.theta1, cycle.theta2))
-        if hr_distance < best_achieved_hr_distance:
-            best_achieved_hr_distance = hr_distance
-            cycle.conformation = conformation
-        cycle.rmsds[conformation] = superimpose(sup, QM_template.atoms, cycle.atoms)
-
-with open(f"{output_dir}/result_rmsd_chart.csv", "w") as output_file_rmsd:
-    output_file_rmsd.write("Ligand_name;Ring_ID;" + ";".join([conformation.upper() for conformation in sorted(QM_templates.keys())]) + ";Conformation;Theta1;Theta2;Theta3" + "\n")
-    for cycle in cycles:
-        item1 = Path(cycle.file).name.split("_")[0]
-        item2 = Path(cycle.file).name.split(".")[0]
-        output_file_rmsd.write(f"{item1};{item2};{';'.join([str(round(float(cycle.rmsds[conformation]), 3)) for conformation in sorted(QM_templates.keys())])};{cycle.conformation.upper()};{cycle.theta1};{cycle.theta2};{cycle.theta3}\n")
-print(f"Selection of conformation for {type_of_cycle} cycles has completed successfully. {len(excluded_rings)} cycles excluded.")
