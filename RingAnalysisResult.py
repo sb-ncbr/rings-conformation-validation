@@ -27,8 +27,9 @@ def addResolution(data_dir, ring_type, RMSD_data):
     file_information_path = os.path.join(data_dir, 'PDB_information.csv')
     file2 = pd.read_csv(file_information_path, sep=';')
 
-    RMSD_data['Entry ID_x'] = RMSD_data['Ring_ID'].str.extract(r'_(\w+)_\d+')
-    RMSD_data['Entry ID'] = RMSD_data['Entry ID_x'].str.upper()
+    #RMSD_data['Entry ID_x'] = RMSD_data['Ring_ID'].str.extract(r'_(\w+)_\d+')
+    #RMSD_data['Entry ID'] = RMSD_data['Entry ID_x'].str.upper()
+	RMSD_data['Entry ID'] = RMSD_data['Ring_ID'].str.extract(r'_(\w+)_\d+')
 
     merged_resolution = pd.merge(RMSD_data,
                                  file2[['Entry ID', 'Experimental Method', 'Release Date', 'Resolution (A)']],
