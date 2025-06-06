@@ -1,7 +1,7 @@
 # Workflow for validation of rings' conformation in ligands
 
 ## Description
-This repository contains the software workflow from the article by Bučeková *et al.* *Analysis of cyclopentane, cyclohexane and benzene conformations in ligands for PDB x-ray structures* that has been submitted to the Journal of Cheminformatics.
+This repository contains the software workflow from the article by Bučeková *et al.* *Analysis of cyclopentane, cyclohexane, and benzene conformations in ligands for PDB x-ray structures* that has been submitted to the Journal of Cheminformatics.
 
 ## Prerequisites
 - Python 3.12.3 available in the PATH environment
