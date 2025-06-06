@@ -13,7 +13,7 @@ from HelperModule.Ring import Ring
 
 def are_bonds_correct(atom_names, bonds, ring: Ring):
     names_set = set(atom_names)
-    metal_atoms = {"FE": 0, "MN": 0, "CO": 0, "RU": 0, "TI": 0, "ZR": 0, "NI": 0, "CR": 0, "RH": 0}
+    metal_atoms = {"FE": 0, "MN": 0, "CO": 0, "RU": 0, "TI": 0, "ZR": 0, "NI": 0, "CR": 0}
     count = 0
     max_count = ring.atom_number
     double_count = 0
