@@ -35,7 +35,7 @@ def addResolution(data_dir, ring_type, RMSD_data):
                                  file2[['Entry ID', 'Experimental Method', 'Release Date', 'Resolution (A)']],
                                  how='left', left_on='Entry ID', right_on='Entry ID')
 
-    merged_resolution.drop(['Entry ID_x'], axis=1, inplace=True)
+    #merged_resolution.drop(['Entry ID_x'], axis=1, inplace=True)
 
     xray_merged_resolution = pd.DataFrame(columns=merged_resolution.columns)
     for index, row in merged_resolution.iterrows():
