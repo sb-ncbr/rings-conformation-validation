@@ -4,6 +4,7 @@ class Ring(Enum):
     CYCLOHEXANE = auto()
     CYCLOPENTANE = auto()
     BENZENE = auto()
+    OXANE=auto()
 
     @property
     def atom_number(self) -> int:
