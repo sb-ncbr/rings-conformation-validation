@@ -14,6 +14,8 @@ class Ring(Enum):
                 return 6
             case Ring.CYCLOPENTANE:
                 return 5
+            case Ring.OXANE:
+                return 6
 
     @property
     def name_substring(self) -> str | None:
@@ -24,6 +26,8 @@ class Ring(Enum):
                 return 'benz;phen'
             case Ring.CYCLOPENTANE:
                 return 'cyclopent'
+            case Ring.OXANE:
+                return 'pyran'
             case _:
                 return None
 
@@ -36,5 +40,7 @@ class Ring(Enum):
                 return "Rings(6 * ['C'])"
             case Ring.CYCLOPENTANE:
                 return "Rings(5 * ['C'])"
+            case Ring.OXANE:
+                return "Rings( 5 * ['C'] + ['O'])"
             case _:
                 return None
