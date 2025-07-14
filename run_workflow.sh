@@ -3,6 +3,7 @@
 CYCLOPENTANE="cyclopentane"
 CYCLOHEXANE="cyclohexane"
 BENZENE="benzene"
+OXANE="oxane"
 ONEDATA_ID=00000000007EB355736861726547756964233630343963616135386530346465626631663962326630313536346465643734636835333465236563663834616464323164326666613165373037633331393464326264633264636830303830233239346338616435643435303866323030666137303032623033383038346131636837366438
 DATA_FOLDER="input_data"
 
@@ -52,7 +53,8 @@ fi
 FILTERED_LIGANDS_PATH="$OUTPUT_FOLDER/validation_data/cyclohexane/filtered_ligands"
 CC_OUTPUT_PATH="$OUTPUT_FOLDER/validation_data/cyclohexane/output"
 mkdir "$CC_OUTPUT_PATH"
-python3 SelectConformation.py "cyclohexane" "$FILTERED_LIGANDS_PATH" "$CC_OUTPUT_PATH"
+python3 CalculateHR.py "$FILTERED_LIGANDS_PATH" "$CC_OUTPUT_PATH/output_HR.json"
+python3 CompareHR.py  "cyclohexane" "$CC_OUTPUT_PATH/output_HR.json" "$CC_OUTPUT_PATH/conformations.csv"
 
 # Identify conformation of cyclopentane cycles
 python3 FilterDataset.py -r "cyclopentane" -i "$INPUT_DATA_FOLDER/${DATA_FOLDER}" -o "$OUTPUT_FOLDER"
@@ -64,10 +66,10 @@ fi
 FILTERED_LIGANDS_PATH="$OUTPUT_FOLDER/validation_data/cyclopentane/filtered_ligands"
 CC_OUTPUT_PATH="$OUTPUT_FOLDER/validation_data/cyclopentane/output"
 mkdir "$CC_OUTPUT_PATH"
-python3 SelectConformation.py "cyclopentane" "$FILTERED_LIGANDS_PATH" "$CC_OUTPUT_PATH"
+python3 CalculateHR.py "$FILTERED_LIGANDS_PATH" "$CC_OUTPUT_PATH/output_HR.json"
+python3 CompareHR.py  "cyclopentane" "$CC_OUTPUT_PATH/output_HR.json" "$CC_OUTPUT_PATH/conformations.csv"
 
 # Identify conformation of benzene cycles
-# Note: in directory QM_optimised_templates/benzene is file flat.pdb for benzene and another conformations for cyclohexane
 python3 FilterDataset.py -r "benzene" -i "$INPUT_DATA_FOLDER/${DATA_FOLDER}" -o "$OUTPUT_FOLDER"
 exit_code=$?
 if [ $exit_code -ne 0 ]; then
@@ -77,7 +79,22 @@ fi
 FILTERED_LIGANDS_PATH="$OUTPUT_FOLDER/validation_data/benzene/filtered_ligands"
 CC_OUTPUT_PATH="$OUTPUT_FOLDER/validation_data/benzene/output"
 mkdir "$CC_OUTPUT_PATH"
-python3 SelectConformation.py "benzene" "$FILTERED_LIGANDS_PATH" "$CC_OUTPUT_PATH"
+python3 CalculateHR.py "$FILTERED_LIGANDS_PATH" "$CC_OUTPUT_PATH/output_HR.json"
+python3 CompareHR.py  "benzene" "$CC_OUTPUT_PATH/output_HR.json" "$CC_OUTPUT_PATH/conformations.csv"
+
+# Identify conformation of oxane cycles
+python3 FilterDataset.py -r "oxane" -i "$INPUT_DATA_FOLDER/${DATA_FOLDER}" -o "$OUTPUT_FOLDER"
+exit_code=$?
+if [ $exit_code -ne 0 ]; then
+    echo "Error: FilterDataset failed with exit code $exit_code"
+    exit $exit_code
+fi
+FILTERED_LIGANDS_PATH="$OUTPUT_FOLDER/validation_data/cyclohexane/filtered_ligands"
+CC_OUTPUT_PATH="$OUTPUT_FOLDER/validation_data/oxane/output"
+mkdir "$CC_OUTPUT_PATH"
+python3 CalculateHR.py "$FILTERED_LIGANDS_PATH" "$CC_OUTPUT_PATH/output_HR.json"
+python3 CompareHR.py  "oxane" "$CC_OUTPUT_PATH/output_HR.json" "$CC_OUTPUT_PATH/conformations.csv"
+
 
 # analyse electron density coverage
 CCP4="${INPUT_DATA_FOLDER}/${DATA_FOLDER}/ccp4"
@@ -87,3 +104,4 @@ python3 electron_density_coverage_analysis/main.py "$OUTPUT_FOLDER" "$CCP4"
 python3 RingAnalysisResult.py -r "$CYCLOPENTANE" -i "${INPUT_DATA_FOLDER}/${DATA_FOLDER}" -o "$OUTPUT_FOLDER"
 python3 RingAnalysisResult.py -r "$CYCLOHEXANE" -i "${INPUT_DATA_FOLDER}/${DATA_FOLDER}" -o "$OUTPUT_FOLDER"
 python3 RingAnalysisResult.py -r "$BENZENE" -i "${INPUT_DATA_FOLDER}/${DATA_FOLDER}" -o "$OUTPUT_FOLDER"
+python3 RingAnalysisResult.py -r "$OXANE" -i "${INPUT_DATA_FOLDER}/${DATA_FOLDER}" -o "$OUTPUT_FOLDER"
