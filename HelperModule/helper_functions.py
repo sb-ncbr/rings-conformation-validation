@@ -34,7 +34,12 @@ def are_bonds_correct(atom_names, bonds, ring: Ring):
             
         if ring is Ring.CYCLOPENTANE and any(v == 5 for v in metal_atoms.values()):
             return False
-            
+        
+        if ring is Ring.OXANE:
+            if bond[2] != 'SING':
+                return False
+            if count == max_count:
+                return True
             
         if ring is Ring.BENZENE:
             if bond[2] == 'DOUB':
