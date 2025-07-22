@@ -14,7 +14,7 @@ def statistic_RMSD(ring_type, base_dir):
 
     if ring_type == "cyclopentane":
         end_index = 5
-    elif ring_type in ["cyclohexane", "benzene"]:
+    elif ring_type in ["cyclohexane", "benzene", "oxane"]:
         end_index = 7
     values_columns = RMSD_data.columns[2: end_index]
     RMSD_data['MinValue'] = RMSD_data[values_columns].min(axis=1)
@@ -67,7 +67,7 @@ def Summary(base_output_dir, ring_type, merged_coverage):
 
     if ring_type == 'cyclopentane':
         x = '5'
-    elif ring_type == 'cyclohexane' or ring_type == 'benzene':
+    elif ring_type == 'cyclohexane' or ring_type == 'benzene' or ring_type=='oxane':
         x = '6'
 
     # Create a CSV file for rows where Resolution (Å) is equal or less than 2
@@ -134,9 +134,9 @@ def Summary(base_output_dir, ring_type, merged_coverage):
 
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description='Calculate RMSD statistics for CP, CH or B rings.')
-    parser.add_argument('-r', '--ring', choices=['cyclopentane', 'cyclohexane', 'benzene'], required=True,
-                        help='Specify the ring type (cyclopentane, cyclohexane or benzene)')
+    parser = argparse.ArgumentParser(description='Calculate RMSD statistics for CP, CH, B or O rings.')
+    parser.add_argument('-r', '--ring', choices=['cyclopentane', 'cyclohexane', 'benzene', 'oxane'], required=True,
+                        help='Specify the ring type (cyclopentane, cyclohexane, benzene or oxane)')
     parser.add_argument('-o', '--output', type=str, required=True,
                         help="Path to the USER's main output directory. This script requires data in that directory "
                              "for analysis. That dir is the same as in th previous steps of the workflow.")

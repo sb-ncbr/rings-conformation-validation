@@ -61,7 +61,7 @@ if __name__ == "__main__":
         ligands_hr = json.load(f)
 
     with open(output_csv_path, "w") as out_f:
-        header = "compound;ring;" + ";".join([f"RMSD_{c}" for c in sorted(standard_HRs.keys())]) + ";BEST_CONFORMATION;theta1;theta2;theta3\n"
+        header = "compound;Ring_ID" + ";".join([f"RMSD_{c}" for c in sorted(standard_HRs.keys())]) + ";Conformation;theta1;theta2;theta3\n"
         out_f.write(header)
 
         for ligand_id, hr_angles in ligands_hr.items():
