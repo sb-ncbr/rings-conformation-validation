@@ -28,7 +28,7 @@ class Ring(Enum):
             case Ring.CYCLOPENTANE:
                 return 'cyclopent'
             case Ring.OXANE:
-                return 'pyran'
+                return 'pyran;oxan'
             case _:
                 return None
 
