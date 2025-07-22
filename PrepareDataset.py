@@ -17,7 +17,7 @@ CPU_COUNT = cpu_count()
 
 
 def is_target_ring_in_name(ring: Ring, all_names: list[str]) -> bool:
-    if ring is Ring.BENZENE:
+    if ring is Ring.BENZENE or Ring.OXANE:
 
         # we need to check both 'benz' and 'phen'
         substrings = ring.name_substring.split(';')
