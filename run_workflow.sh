@@ -89,7 +89,7 @@ if [ $exit_code -ne 0 ]; then
     echo "Error: FilterDataset failed with exit code $exit_code"
     exit $exit_code
 fi
-FILTERED_LIGANDS_PATH="$OUTPUT_FOLDER/validation_data/cyclohexane/filtered_ligands"
+FILTERED_LIGANDS_PATH="$OUTPUT_FOLDER/validation_data/oxane/filtered_ligands"
 CC_OUTPUT_PATH="$OUTPUT_FOLDER/validation_data/oxane/output"
 mkdir "$CC_OUTPUT_PATH"
 python3 CalculateHR.py "$FILTERED_LIGANDS_PATH" "$CC_OUTPUT_PATH/output_HR.json"
