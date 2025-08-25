@@ -37,13 +37,14 @@ def addResolution(data_dir, ring_type, RMSD_data):
 
     #merged_resolution.drop(['Entry ID_x'], axis=1, inplace=True)
 
-    xray_merged_resolution = pd.DataFrame(columns=merged_resolution.columns)
-    for index, row in merged_resolution.iterrows():
-        methods = row['Experimental Method']
-        if isinstance(methods, str) and 'X-RAY DIFFRACTION' in methods.split(', '):
-            xray_merged_resolution = pd.concat([xray_merged_resolution, row.to_frame().transpose()], ignore_index=True)
+    #xray_merged_resolution = pd.DataFrame(columns=merged_resolution.columns)
+    #for index, row in merged_resolution.iterrows():
+    #    methods = row['Experimental Method']
+    #    if isinstance(methods, str) and 'X-RAY DIFFRACTION' in methods.split(', '):
+    #        xray_merged_resolution = pd.concat([xray_merged_resolution, row.to_frame().transpose()], ignore_index=True)
 
-    return xray_merged_resolution
+    #return xray_merged_resolution
+    return merged_resolution
 
 
 def addElDensity(ring_type, xray_merged_resolution, base_dir):
