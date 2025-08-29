@@ -73,6 +73,8 @@ def Summary(base_output_dir, ring_type, merged_coverage):
 
     # Create a CSV file for rows where Resolution (Å) is equal or less than 2
     output_file_path_1 = os.path.join(output_folder, 'resolution_2_or_less.csv')
+    df['Resolution (A)'] = pd.to_numeric(df['Resolution (A)'], errors='coerce')
+    df = df.dropna(subset=['Resolution (A)'])
     df_resolution_2_or_less = df[df['Resolution (A)'] <= 2]
     df_resolution_2_or_less.to_csv(output_file_path_1, sep=';', index=False)
 
