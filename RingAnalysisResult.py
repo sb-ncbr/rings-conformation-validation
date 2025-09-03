@@ -7,7 +7,7 @@ import os
 
 
 def statistic_RMSD(ring_type, base_dir):
-    filename = "result_rmsd_chart.csv"
+    filename = "conformations.csv"
     file_path = os.path.join(base_dir, f'{ring_type}', "output", filename)
     RMSD_data = pd.read_csv(file_path, delimiter=';', header=0)
     RMSD_data = RMSD_data.dropna(axis=1)
