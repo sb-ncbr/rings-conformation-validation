@@ -5,6 +5,8 @@ import argparse
 from pathlib import Path
 import shutil
 from electron_density_coverage_analysis import run_as_function
+import zipfile
+import tempfile
 
 CPU_COUNT = cpu_count()
 
@@ -46,7 +48,19 @@ def run_exe(ligand_filepath: Path, ccp4_dir_path: Path, arguments: argparse.Name
         pq_pdb_name = ligand_filepath.name.split(".")[0]
         pdb_id = pq_pdb_name.split('_')[1]
         residue_id = ligand_filepath.parent.parent.name
-        ccp4_filepath = (ccp4_dir_path / (pdb_id + '.ccp4.gz')).resolve()
+        ccp4_filepath = ccp4_dir_path / f"{pdb_id}.ccp4.gz"
+        if not ccp4_filepath.exists():
+        #look inside zips
+            for zip_path in ccp4_dir_path.glob('*.zip'):
+                with zipfile.ZipFile(zip_path, 'r') as zipf:
+                    for name in zipf.namelist():
+                        if name.endswith(f"{pdb_id}.ccp4.gz"):
+                            import tempfile
+                            tmp = tempfile.NamedTemporaryFile(delete=False, suffix='.ccp4.gz')
+                            tmp.write(zipf.read(name))
+                            tmp.close()
+                            ccp4_filepath = Path(tmp.name)
+                            break
         arguments.input_cycle_pdb = str(ligand_filepath.resolve())
         arguments.input_density_ccp4 = str(ccp4_filepath)
 
@@ -58,13 +72,25 @@ def run_exe(ligand_filepath: Path, ccp4_dir_path: Path, arguments: argparse.Name
         logging.error(e, stack_info=True, exc_info=True)
     return result
 
+def get_available_pdb_ids(ccp4_dir: Path):
+    pdb_ids = set()
+
+    for f in ccp4_dir.glob('**/*.ccp4.gz'):
+        pdb_ids.add(f.stem.replace('.ccp4', ''))
+
+    for zip_path in ccp4_dir.glob('**/*.zip'):
+        with zipfile.ZipFile(zip_path, 'r') as zipf:
+            pdb_ids.update(Path(name).stem.replace('.ccp4', '') 
+                           for name in zipf.namelist() if name.endswith('.ccp4.gz'))
+
+    return pdb_ids
+
 
 def get_filepaths(rootdir: Path, ccp4_dir: Path, ring_type: str):
     try:
         l = []
-
-        all_ccp4_files = ccp4_dir.glob('**/*')
-        pdb_ids_for_which_ccp4_is_available = [x.stem.removesuffix('.ccp4') for x in all_ccp4_files]
+        pdb_ids_for_which_ccp4_is_available = get_available_pdb_ids(ccp4_dir)
+        
         for f in Path(rootdir / 'validation_data' / ring_type / 'filtered_ligands').rglob("*"):
 
             if f.is_file():
