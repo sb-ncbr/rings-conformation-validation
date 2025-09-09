@@ -26,6 +26,8 @@ def statistic_RMSD(ring_type, base_dir):
 def addResolution(data_dir, ring_type, RMSD_data):
     file_information_path = os.path.join(data_dir, 'PDB_information.csv')
     file2 = pd.read_csv(file_information_path, sep=';')
+    #RMSD_data['Entry ID_x'] = RMSD_data['Ring_ID'].str.extract(r'_(\w+)_\d+')
+    #RMSD_data['Entry ID'] = RMSD_data['Entry ID_x'].str.upper()
 
     RMSD_data['Entry ID'] = RMSD_data['Ring_ID'].str.extract(r'_(\w+)_\d+')
     RMSD_data['Entry ID'] = RMSD_data['Entry ID'].str.upper().str.strip() 
@@ -36,17 +38,17 @@ def addResolution(data_dir, ring_type, RMSD_data):
                                  how='left', left_on='Entry ID', right_on='Entry ID')
 
     #merged_resolution.drop(['Entry ID_x'], axis=1, inplace=True)
+    #xray_merged_resolution = pd.DataFrame(columns=merged_resolution.columns)
+    #for index, row in merged_resolution.iterrows():
+    #    methods = row['Experimental Method']
+    #    if isinstance(methods, str) and 'X-RAY DIFFRACTION' in methods.split(', '):
+    #        xray_merged_resolution = pd.concat([xray_merged_resolution, row.to_frame().transpose()], ignore_index=True)
 
-    xray_merged_resolution = pd.DataFrame(columns=merged_resolution.columns)
-    for index, row in merged_resolution.iterrows():
-        methods = row['Experimental Method']
-        if isinstance(methods, str) and 'X-RAY DIFFRACTION' in methods.split(', '):
-            xray_merged_resolution = pd.concat([xray_merged_resolution, row.to_frame().transpose()], ignore_index=True)
-
-    return xray_merged_resolution
+    #return xray_merged_resolution
+    return merged_resolution
 
 
-def addElDensity(ring_type, xray_merged_resolution, base_dir):
+def addElDensity(ring_type, merged_resolution, base_dir):
     path_to_output_file = Path(base_dir) / f"{ring_type}/el-density-output"
     path_to_output_file = path_to_output_file.resolve()
     file2_path = path_to_output_file / f"{ring_type}_params__analysis_output.csv"
@@ -54,7 +56,7 @@ def addElDensity(ring_type, xray_merged_resolution, base_dir):
     new_headers = ['Entry', 'Atoms in ring']
     file2 = pd.read_csv(file2_path, delimiter=';', names=new_headers)
     file2[['Ring_ID', 'Ligand_name', 'Coverage']] = file2['Entry'].str.split(',', expand=True)
-    merged_coverage = pd.merge(xray_merged_resolution, file2[['Ring_ID', 'Coverage']],
+    merged_coverage = pd.merge(merged_resolution, file2[['Ring_ID', 'Coverage']],
                                how='left', on=['Ring_ID'])
 
     return merged_coverage
@@ -72,6 +74,9 @@ def Summary(base_output_dir, ring_type, merged_coverage):
 
     # Create a CSV file for rows where Resolution (Å) is equal or less than 2
     output_file_path_1 = os.path.join(output_folder, 'resolution_2_or_less.csv')
+    
+    df['Resolution (A)'] = pd.to_numeric(df['Resolution (A)'], errors='coerce')
+    df = df.dropna(subset=['Resolution (A)'])
     df_resolution_2_or_less = df[df['Resolution (A)'] <= 2]
     df_resolution_2_or_less.to_csv(output_file_path_1, sep=';', index=False)
 
