@@ -55,7 +55,7 @@ FILTERED_LIGANDS_PATH="$OUTPUT_FOLDER/validation_data/cyclohexane/filtered_ligan
 CC_OUTPUT_PATH="$OUTPUT_FOLDER/validation_data/cyclohexane/output"
 mkdir "$CC_OUTPUT_PATH"
 python3 CalculateHR.py "$FILTERED_LIGANDS_PATH" "$CC_OUTPUT_PATH/output_HR.json"
-python3 CompareHR.py  "cyclohexane" "$CC_OUTPUT_PATH/output_HR.json" "$CC_OUTPUT_PATH/result_rmsd_chart.csv"
+python3 CompareHR.py  "cyclohexane" "$CC_OUTPUT_PATH/output_HR.json" "$CC_OUTPUT_PATH/result_conf_chart.csv"
 
 # Identify conformation of cyclopentane cycles
 python3 FilterDataset.py -r "cyclopentane" -i "$INPUT_DATA_FOLDER/${DATA_FOLDER}" -o "$OUTPUT_FOLDER"
@@ -68,7 +68,7 @@ FILTERED_LIGANDS_PATH="$OUTPUT_FOLDER/validation_data/cyclopentane/filtered_liga
 CC_OUTPUT_PATH="$OUTPUT_FOLDER/validation_data/cyclopentane/output"
 mkdir "$CC_OUTPUT_PATH"
 python3 CalculateHR.py "$FILTERED_LIGANDS_PATH" "$CC_OUTPUT_PATH/output_HR.json"
-python3 CompareHR.py  "cyclopentane" "$CC_OUTPUT_PATH/output_HR.json" "$CC_OUTPUT_PATH/result_rmsd_chart.csv"
+python3 CompareHR.py  "cyclopentane" "$CC_OUTPUT_PATH/output_HR.json" "$CC_OUTPUT_PATH/result_conf_chart.csv"
 
 # Identify conformation of benzene cycles
 python3 FilterDataset.py -r "benzene" -i "$INPUT_DATA_FOLDER/${DATA_FOLDER}" -o "$OUTPUT_FOLDER"
@@ -81,7 +81,7 @@ FILTERED_LIGANDS_PATH="$OUTPUT_FOLDER/validation_data/benzene/filtered_ligands"
 CC_OUTPUT_PATH="$OUTPUT_FOLDER/validation_data/benzene/output"
 mkdir "$CC_OUTPUT_PATH"
 python3 CalculateHR.py "$FILTERED_LIGANDS_PATH" "$CC_OUTPUT_PATH/output_HR.json"
-python3 CompareHR.py  "benzene" "$CC_OUTPUT_PATH/output_HR.json" "$CC_OUTPUT_PATH/result_rmsd_chart.csv"
+python3 CompareHR.py  "benzene" "$CC_OUTPUT_PATH/output_HR.json" "$CC_OUTPUT_PATH/result_conf_chart.csv"
 
 # Identify conformation of oxane cycles
 python3 FilterDataset.py -r "oxane" -i "$INPUT_DATA_FOLDER/${DATA_FOLDER}" -o "$OUTPUT_FOLDER"
@@ -94,7 +94,7 @@ FILTERED_LIGANDS_PATH="$OUTPUT_FOLDER/validation_data/oxane/filtered_ligands"
 CC_OUTPUT_PATH="$OUTPUT_FOLDER/validation_data/oxane/output"
 mkdir "$CC_OUTPUT_PATH"
 python3 CalculateHR.py "$FILTERED_LIGANDS_PATH" "$CC_OUTPUT_PATH/output_HR.json"
-python3 CompareHR.py  "oxane" "$CC_OUTPUT_PATH/output_HR.json" "$CC_OUTPUT_PATH/result_rmsd_chart.csv"
+python3 CompareHR.py  "oxane" "$CC_OUTPUT_PATH/output_HR.json" "$CC_OUTPUT_PATH/result_conf_chart.csv"
 
 
 # analyse electron density coverage

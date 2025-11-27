@@ -5,35 +5,27 @@ import pandas as pd
 import argparse
 import os
 
-
-def statistic_RMSD(ring_type, base_dir):
-    filename = "result_rmsd_chart.csv"
+#we don't have RMSD, so changed for HR distance csv
+def read_conf(ring_type, base_dir):
+    filename = "result_conf_chart.csv"
     file_path = os.path.join(base_dir, f'{ring_type}', "output", filename)
-    RMSD_data = pd.read_csv(file_path, delimiter=';', header=0)
-    RMSD_data = RMSD_data.dropna(axis=1)
+    conf_data = pd.read_csv(file_path, delimiter=';', header=0)
+    conf_data = conf_data.dropna(axis=1)
 
-    if ring_type == "cyclopentane":
-        end_index = 5
-    elif ring_type in ["cyclohexane", "benzene", "oxane"]:
-        end_index = 7
-    values_columns = RMSD_data.columns[2: end_index]
-    RMSD_data['MinValue'] = RMSD_data[values_columns].min(axis=1)
-    RMSD_data['RMSD_Conformation'] = RMSD_data[values_columns].idxmin(axis=1)
-
-    return RMSD_data
+    return conf_data
 
 
-def addResolution(data_dir, ring_type, RMSD_data):
+def addResolution(data_dir, ring_type, conf_data):
     file_information_path = os.path.join(data_dir, 'PDB_information.csv')
     file2 = pd.read_csv(file_information_path, sep=';')
     #RMSD_data['Entry ID_x'] = RMSD_data['Ring_ID'].str.extract(r'_(\w+)_\d+')
     #RMSD_data['Entry ID'] = RMSD_data['Entry ID_x'].str.upper()
 
-    RMSD_data['Entry ID'] = RMSD_data['Ring_ID'].str.extract(r'_(\w+)_\d+')
-    RMSD_data['Entry ID'] = RMSD_data['Entry ID'].str.upper().str.strip() 
+    conf_data['Entry ID'] = conf_data['Ring_ID'].str.extract(r'_(\w+)_\d+')
+    conf_data['Entry ID'] = conf_data['Entry ID'].str.upper().str.strip() 
     file2['Entry ID'] = file2['Entry ID'].str.upper().str.strip() 
 
-    merged_resolution = pd.merge(RMSD_data,
+    merged_resolution = pd.merge(conf_data,
                                  file2[['Entry ID', 'Experimental Method', 'Release Date', 'Resolution (A)']],
                                  how='left', left_on='Entry ID', right_on='Entry ID')
 
@@ -138,7 +130,7 @@ def Summary(base_output_dir, ring_type, merged_coverage):
 
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description='Calculate RMSD statistics for CP, CH, B or O rings.')
+    parser = argparse.ArgumentParser(description='Calculate conformation statistics for CP, CH, B or O rings.')
     parser.add_argument('-r', '--ring', choices=['cyclopentane', 'cyclohexane', 'benzene', 'oxane'], required=True,
                         help='Specify the ring type (cyclopentane, cyclohexane, benzene or oxane)')
     parser.add_argument('-o', '--output', type=str, required=True,
@@ -154,11 +146,11 @@ if __name__ == '__main__':
     logging.info(f"[{args.ring.capitalize()}]: Starting RingAnalysisResult...")
     base_dir = os.path.join(args.output, "validation_data")
 
-    # Call statistic_RMSD with the specified ring type
-    rmsd_result = statistic_RMSD(args.ring, base_dir)
+    # Call read_conf with the specified ring type
+    conf_result = read_conf(args.ring, base_dir)
 
     # Call addResolution
-    resolution_result = addResolution(args.input, args.ring, rmsd_result)
+    resolution_result = addResolution(args.input, args.ring, conf_result)
 
     # Call addElDensity
     coverage_result = addElDensity(args.ring, resolution_result, base_dir)

@@ -8,12 +8,8 @@ import math
 from pathlib import Path
 import json
 
-import json
-import math
-from sys import argv
-
 #compares HR angles of ligands to standard HR for cyclohexane, cyclopentane, benzene and oxane. Chooses the best conformation for each ligand
-def rmsd_hr_angles(hr1, hr2, cycle_type):
+def dist_hr_angles(hr1, hr2, cycle_type):
     try:
         if cycle_type in ["cyclohexane", "benzene", "oxane"]:
             #get theta1 and theta2, fail if missing
@@ -28,10 +24,14 @@ def rmsd_hr_angles(hr1, hr2, cycle_type):
 
             a1 = [float(t1_1), float(t2_1), float(t3_1)]
             a2 = [float(t1_2), float(t2_2), float(t3_2)]
+            
+            return math.dist(a1, a2)
 
         elif cycle_type == "cyclopentane":
             a1 = [float(hr1["theta1"]), float(hr1["theta2"])]
             a2 = [float(hr2["theta1"]), float(hr2["theta2"])]
+            
+            return math.dist(a1, a2)
         else:
             raise ValueError(f"Unsupported cycle type: {cycle_type}")
 
@@ -42,8 +42,6 @@ def rmsd_hr_angles(hr1, hr2, cycle_type):
     except ValueError as e:
         raise ValueError(f"Invalid angle value: {e}")
 
-    sqdiff = [(x - y) ** 2 for x, y in zip(a1, a2)]
-    return math.sqrt(sum(sqdiff) / len(sqdiff))
 
 
 
@@ -61,29 +59,29 @@ if __name__ == "__main__":
         ligands_hr = json.load(f)
 
     with open(output_csv_path, "w") as out_f:
-        header = "Ligand_name;Ring_ID;" + ";".join([f"RMSD_{c}" for c in sorted(standard_HRs.keys())]) + ";Conformation;theta1;theta2;theta3\n"
+        header = "Ligand_name;Ring_ID;Conformation;theta1;theta2;theta3\n"
         out_f.write(header)
 
         for ligand_id, hr_angles in ligands_hr.items():
-            best_rmsd = float("inf")
+            best_dist = float("inf")
             best_conf = None
-            rmsds = {}
+            hr_dists = {}
 
             for conf_name, std_hr in standard_HRs.items():
-                rmsd = rmsd_hr_angles(std_hr, hr_angles, type_of_cycle)
-                rmsds[conf_name] = rmsd
-                if rmsd < best_rmsd:
-                    best_rmsd = rmsd
+                hr_dist = dist_hr_angles(std_hr, hr_angles, type_of_cycle)
+                hr_dists[conf_name] = hr_dist
+                if hr_dist < best_dist:
+                    best_dist = hr_dist
                     best_conf = conf_name
 
             item1 = ligand_id.split("_")[0]
             item2 = ligand_id
 
-            rmsd_values_str = ";".join([f"{rmsds[c]:.3f}" for c in sorted(standard_HRs.keys())])
+            #rmsd_values_str = ";".join([f"{rmsds[c]:.3f}" for c in sorted(standard_HRs.keys())])
             if type_of_cycle == "cyclopentane":
-                line = f"{item1};{item2};{rmsd_values_str};{best_conf.upper()};{hr_angles['theta1']};{hr_angles['theta2']};\n"
+                line = f"{item1};{item2};{best_conf.upper()};{hr_angles['theta1']};{hr_angles['theta2']};\n"
             else:
                 theta3 = hr_angles.get('theta3')
                 theta3_str = "" if theta3 is None else theta3
-                line = f"{item1};{item2};{rmsd_values_str};{best_conf.upper()};{hr_angles['theta1']};{hr_angles['theta2']};{theta3_str}\n"
+                line = f"{item1};{item2};{best_conf.upper()};{hr_angles['theta1']};{hr_angles['theta2']};{theta3_str}\n"
             out_f.write(line)
