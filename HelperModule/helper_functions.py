@@ -23,29 +23,33 @@ def are_bonds_correct(atom_names, bonds, ring: Ring):
                 
         if atom_1 in metal_atoms.keys() and atom_2 in names_set:
             metal_atoms[atom_1] += 1
-            continue
+            
         elif atom_2 in metal_atoms.keys() and atom_1 in names_set:
             metal_atoms[atom_2] += 1
-            continue
+            
         elif (atom_1 not in names_set) or (atom_2 not in names_set):
             continue
-         
-        bond_type = bond[2]
-        count += 1
-
-        if ring is Ring.BENZENE and bond_type == 'DOUB':
-            double_count += 1
-
-        if ring is not Ring.BENZENE and bond_type != 'SING':
-            return False  
-            
-    if ring is Ring.BENZENE:
-        return count == 6 and double_count == 3
-
-    if ring is Ring.CYCLOPENTANE and any(v == 5 for v in metal_atoms.values()):
-        return False
         
-    return count == max_count
+        else:
+            count += 1
+        
+
+        if ring is Ring.CYCLOPENTANE and any(v == 5 for v in metal_atoms.values()):
+            return False
+
+        if ring is Ring.BENZENE:
+            if bond[2] == 'DOUB':
+                double_count += 1
+            if double_count==3:
+                return True
+ 
+        else: 
+            if bond[2] != 'SING' :
+                return False
+            if count == max_count:
+                return True
+        
+    return False
 
 
 
@@ -102,5 +106,4 @@ def file_exists(input_file: str | Path) -> bool:
         logging.error(f"The file {str(input_path)} was not found.")
         return False
     return True
-
 
