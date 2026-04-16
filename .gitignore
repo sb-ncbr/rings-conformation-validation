@@ -1,6 +1,7 @@
 .idea
 .vs
 venv/
+.venv/
 *.txt
 *.csv
 *.cif
