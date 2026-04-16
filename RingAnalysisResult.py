@@ -159,10 +159,3 @@ if __name__ == '__main__':
     excel_file_path = Summary(base_dir, args.ring, coverage_result)
     logging.info(f"[{args.ring.capitalize()}]: RingAnalysisResult has completed successfully")
 
-    # remove not used output folder from the first step of workflow
-    path_to_unused_folder = Path(base_dir) / 'result'
-
-    if path_to_unused_folder.exists():
-        logging.info("Cleaning up...")
-        shutil.rmtree(path_to_unused_folder)
-        logging.info("Done.")
