@@ -17,16 +17,16 @@ CPU_COUNT = cpu_count()
 
 
 def is_target_ring_in_name(ring: Ring, all_names: list[str]) -> bool:
-    if ring is Ring.BENZENE or Ring.OXANE:
-
-        # we need to check both 'benz' and 'phen'
+    if ring.name_substring and ';' in ring.name_substring:
+        # we need to check multiple substrings (like 'benz' and 'phen')
         substrings = ring.name_substring.split(';')
-
         for substring in substrings:
-            if any(substring in e for e in all_names):
+            if any(substring in name for name in all_names):
                 return True
-
-    return any(ring.name_substring in e for e in all_names)
+        return False
+    elif ring.name_substring:
+        return any(ring.name_substring in name for name in all_names)
+    return False
 
 
 def extract_ligand_names(doc: cif.Document) -> Dict[Ring, List[str]]:
@@ -43,11 +43,8 @@ def extract_ligand_names(doc: cif.Document) -> Dict[Ring, List[str]]:
 
             ligand_name = ligand_block.find_value('_chem_comp.id')
 
-            # if len(ligand_name) > 3:
-            #     logging.warning(f"The ligand name is longer than allowed three characters. Skipping {ligand_name}...")
-            #     continue
-
-            if str(ligand_name) in ('PHE', 'TYR', 'TRP'):
+            #Skip standard amino acids that might contain rings
+            if str(ligand_name) in ('PHE', 'TYR', 'TRP', 'HIS', 'PRO'):
                 continue
 
             for ring in Ring:
@@ -57,7 +54,6 @@ def extract_ligand_names(doc: cif.Document) -> Dict[Ring, List[str]]:
         except Exception:
             logging.warning(f'Error while extracting ligand names from block with name {compound_name}. Skipping...')
             continue
-
     if not all(extracted_names.values()):
         logging.warning('No rings found. Exiting...')
         sys.exit(1)
@@ -74,20 +70,66 @@ def create_config_for_pq(path_to_main_output: Path, path_to_pdb_local: str, liga
         "MaxParallelism": CPU_COUNT
     }
 
-    for ring, ligands in ligands_dict.items():
-        config["Queries"].append(create_query(ring.name.lower(), ring.pattern_query +
-                                              f".Inside(Residues({ligands}))"))
+   #ONLY pure DNA/RNA nucleotides to exclude
+    #(Keep AMP, ADP, ATP, etc. as they're ligands)
+    pure_nucleotides = {
+        # Single letter nucleic acid bases (DNA/RNA)
+        "A", "C", "G", "U", "T",
+        # Two-letter deoxynucleotides (DNA)
+        "DA", "DC", "DG", "DT", "DU",
+        # Two-letter ribonucleotides (RNA)  
+        "RA", "RC", "RG", "RU", "RT",
+        # Nucleic acid sugars (part of DNA/RNA backbone)
+        "RIB", "DRB"
+    }
 
+
+
+    
+    for ring, ligands in ligands_dict.items():
+        #Skip if no ligands found for this ring
+        if not ligands:
+            continue
+        
+        #Filter out ONLY pure nucleotides, keep everything else
+        filtered_ligands = [lig for lig in ligands if lig not in pure_nucleotides]
+        
+        if not filtered_ligands:  #Skip if all ligands were pure nucleotides
+            logging.info(f"No non-nucleotide ligands found for {ring.name}")
+            continue
+            
+        pattern_query = ring.pattern_query
+        
+        if isinstance(pattern_query, list):
+            for i, pattern in enumerate(pattern_query):
+                if pattern:  
+                    query_id = f"{ring.name.lower()}_{i+1}"
+                    query_string = f"{pattern}.Inside(Residues({filtered_ligands}))"
+                    config["Queries"].append(create_query(query_id, query_string))
+        elif pattern_query:
+            query_id = ring.name.lower()
+            #Use the filtered ligand list (no pure nucleotides)
+            query_string = f"{pattern_query}.Inside(Residues({filtered_ligands}))"
+            config["Queries"].append(create_query(query_id, query_string))
+
+    
+    if not config["Queries"]:
+        logging.error("No valid queries generated. Check if rings were found and have pattern queries defined.")
+        sys.exit(1)
+    logging.debug(f"Before filtering: {ligands}")
+    filtered_ligands = [lig for lig in ligands if lig not in pure_nucleotides]
+    logging.debug(f"After filtering: {filtered_ligands}")
     try:
         with open(path_to_main_output / PQ_CONFIG, "w") as outfile:
             json.dump(config, outfile)
-        logging.info("Configuration file successfully created.")
+        logging.info(f"Configuration file successfully created with {len(config['Queries'])} queries.")
     except OSError as e:
         logging.error(f"Error writing to {PQ_CONFIG}: {e}")
         sys.exit(1)
     except Exception as e:
         logging.error(f"An unexpected error occurred: {e}")
         sys.exit(1)
+
 
 
 def create_query(query_id: str, query_string: str) -> Dict[str, str]:

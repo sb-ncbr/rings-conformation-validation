@@ -193,7 +193,7 @@ def calculate_hr_angles_from_pdb(file, cycle_type):
 
     if cycle_type in ["cyclohexane", "benzene", "cyclopentane"]:
         return calculate_HR_homocycles(atoms)
-    elif cycle_type in ["oxane"]:
+    elif cycle_type in ["oxane", "oxolane"]:
         return calculate_HR_heterocycles(atoms)
     else:
         raise ValueError(f"Unsupported cycle type: {cycle_type}")

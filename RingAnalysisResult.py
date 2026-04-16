@@ -59,7 +59,7 @@ def Summary(base_output_dir, ring_type, merged_coverage):
     output_folder = os.path.join(base_output_dir, ring_type, 'final_results')
     os.makedirs(output_folder, exist_ok=True)
 
-    if ring_type == 'cyclopentane':
+    if ring_type == 'cyclopentane' or ring_type=='oxolane':
         x = '5'
     elif ring_type == 'cyclohexane' or ring_type == 'benzene' or ring_type=='oxane':
         x = '6'
@@ -131,8 +131,8 @@ def Summary(base_output_dir, ring_type, merged_coverage):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Calculate conformation statistics for CP, CH, B or O rings.')
-    parser.add_argument('-r', '--ring', choices=['cyclopentane', 'cyclohexane', 'benzene', 'oxane'], required=True,
-                        help='Specify the ring type (cyclopentane, cyclohexane, benzene or oxane)')
+    parser.add_argument('-r', '--ring', choices=['cyclopentane', 'cyclohexane', 'benzene', 'oxane', 'oxolane'], required=True,
+                        help='Specify the ring type (cyclopentane, cyclohexane, benzene or oxane, oxolane)')
     parser.add_argument('-o', '--output', type=str, required=True,
                         help="Path to the USER's main output directory. This script requires data in that directory "
                              "for analysis. That dir is the same as in th previous steps of the workflow.")
@@ -166,4 +166,3 @@ if __name__ == '__main__':
         logging.info("Cleaning up...")
         shutil.rmtree(path_to_unused_folder)
         logging.info("Done.")
-

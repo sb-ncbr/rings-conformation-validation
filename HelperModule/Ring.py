@@ -5,6 +5,7 @@ class Ring(Enum):
     CYCLOPENTANE = auto()
     BENZENE = auto()
     OXANE=auto()
+    OXOLANE=auto()
 
     @property
     def atom_number(self) -> int:
@@ -17,6 +18,8 @@ class Ring(Enum):
                 return 5
             case Ring.OXANE:
                 return 6
+            case Ring.OXOLANE:
+                return 5
 
     @property
     def name_substring(self) -> str | None:
@@ -29,6 +32,8 @@ class Ring(Enum):
                 return 'cyclopent'
             case Ring.OXANE:
                 return 'pyran;oxan'
+            case Ring.OXOLANE:  
+                return 'furan;oxolan'
             case _:
                 return None
 
@@ -43,5 +48,7 @@ class Ring(Enum):
                 return "Rings(5 * ['C'])"
             case Ring.OXANE:
                 return "Rings( 5 * ['C'] + ['O'])"
+            case Ring.OXOLANE:
+                return "Rings( 4 * ['C'] + ['O'])"
             case _:
                 return None

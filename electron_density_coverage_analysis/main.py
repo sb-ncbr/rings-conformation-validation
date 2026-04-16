@@ -90,7 +90,7 @@ def run_analysis(args: argparse.Namespace):
         if arguments.more_or_equal:
             params = params + "m"
 
-        ring_types = ['cyclohexane', 'cyclopentane', 'benzene', 'oxane']
+        ring_types = ['cyclohexane', 'cyclopentane', 'benzene', 'oxane', 'oxolane']
 
         for ring_type in ring_types:
             path_to_output = Path(args.rootdir).resolve() / "validation_data" / ring_type / "el-density-output"

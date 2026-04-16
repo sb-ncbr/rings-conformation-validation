@@ -27,7 +27,7 @@ def dist_hr_angles(hr1, hr2, cycle_type):
             
             return math.dist(a1, a2)
 
-        elif cycle_type == "cyclopentane":
+        elif cycle_type in ["cyclopentane", "oxolane"]:
             a1 = [float(hr1["theta1"]), float(hr1["theta2"])]
             a2 = [float(hr2["theta1"]), float(hr2["theta2"])]
             
@@ -78,7 +78,7 @@ if __name__ == "__main__":
             item2 = ligand_id
 
             #rmsd_values_str = ";".join([f"{rmsds[c]:.3f}" for c in sorted(standard_HRs.keys())])
-            if type_of_cycle == "cyclopentane":
+            if type_of_cycle in ["cyclopentane", "oxolane"]:
                 line = f"{item1};{item2};{best_conf.upper()};{hr_angles['theta1']};{hr_angles['theta2']};\n"
             else:
                 theta3 = hr_angles.get('theta3')
