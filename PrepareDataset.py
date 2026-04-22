@@ -1,8 +1,13 @@
 import re
 from argparse import ArgumentParser
 from HelperModule.Ring import Ring
-from HelperModule.helper_functions import (unzip_file, is_mono_installed,
-                                           read_component_dictionary, is_valid_directory, file_exists)
+from HelperModule.helper_functions import (
+    unzip_file,
+    is_mono_installed,
+    read_component_dictionary,
+    is_valid_directory,
+    file_exists,
+)
 from HelperModule.constants import *
 import logging
 from gemmi import cif
@@ -17,9 +22,9 @@ CPU_COUNT = cpu_count()
 
 
 def is_target_ring_in_name(ring: Ring, all_names: list[str]) -> bool:
-    if ring.name_substring and ';' in ring.name_substring:
+    if ring.name_substring and ";" in ring.name_substring:
         # we need to check multiple substrings (like 'benz' and 'phen')
-        substrings = ring.name_substring.split(';')
+        substrings = ring.name_substring.split(";")
         for substring in substrings:
             if any(substring in name for name in all_names):
                 return True
@@ -33,18 +38,21 @@ def extract_ligand_names(doc: cif.Document) -> Dict[Ring, List[str]]:
     logging.info("Extracting ligand names...")
     extracted_names = {ring: [] for ring in Ring}
     for i, ligand_block in enumerate(doc):
-        compound_name = ligand_block.find_value('_chem_comp.name')  # chemical name
+        compound_name = ligand_block.find_value("_chem_comp.name")  # chemical name
         try:
-            other_names = ligand_block.find(['_pdbx_chem_comp_identifier.identifier'])
-            synonyms = ligand_block.find_value('_chem_comp.pdbx_synonyms')
+            other_names = ligand_block.find(["_pdbx_chem_comp_identifier.identifier"])
+            synonyms = ligand_block.find_value("_chem_comp.pdbx_synonyms")
 
-            all_names = [compound_name.lower()] + [list(e)[0].lower() for e in list(other_names)] + \
-                        [synonyms.lower()]
+            all_names = (
+                [compound_name.lower()]
+                + [list(e)[0].lower() for e in list(other_names)]
+                + [synonyms.lower()]
+            )
 
-            ligand_name = ligand_block.find_value('_chem_comp.id')
+            ligand_name = ligand_block.find_value("_chem_comp.id")
 
-            #Skip standard amino acids that might contain rings
-            if str(ligand_name) in ('PHE', 'TYR', 'TRP', 'HIS', 'PRO'):
+            # Skip standard amino acids that might contain rings
+            if str(ligand_name) in ("PHE", "TYR", "TRP", "HIS", "PRO"):
                 continue
 
             for ring in Ring:
@@ -52,69 +60,87 @@ def extract_ligand_names(doc: cif.Document) -> Dict[Ring, List[str]]:
                     extracted_names[ring].append(ligand_name)
 
         except Exception:
-            logging.warning(f'Error while extracting ligand names from block with name {compound_name}. Skipping...')
+            logging.warning(
+                f"Error while extracting ligand names from block with name {compound_name}. Skipping..."
+            )
             continue
     if not all(extracted_names.values()):
-        logging.warning('No rings found. Exiting...')
+        logging.warning("No rings found. Exiting...")
         sys.exit(1)
 
     return extracted_names
 
 
-def create_config_for_pq(path_to_main_output: Path, path_to_pdb_local: str, ligands_dict: Dict[Ring, List[str]]) -> None:
+def create_config_for_pq(
+    path_to_main_output: Path,
+    path_to_pdb_local: str,
+    ligands_dict: Dict[Ring, List[str]],
+) -> None:
     logging.info("Creating configuration file for Pattern Query...")
     config = {
         "InputFolders": [path_to_pdb_local],
         "Queries": [],
         "StatisticsOnly": False,
-        "MaxParallelism": CPU_COUNT
+        "MaxParallelism": CPU_COUNT,
     }
 
-   #ONLY pure DNA/RNA nucleotides to exclude
-    #(Keep AMP, ADP, ATP, etc. as they're ligands)
+    # ONLY pure DNA/RNA nucleotides to exclude
+    # (Keep AMP, ADP, ATP, etc. as they're ligands)
     pure_nucleotides = {
         # Single letter nucleic acid bases (DNA/RNA)
-        "A", "C", "G", "U", "T",
+        "A",
+        "C",
+        "G",
+        "U",
+        "T",
+        "N",
         # Two-letter deoxynucleotides (DNA)
-        "DA", "DC", "DG", "DT", "DU",
-        # Two-letter ribonucleotides (RNA)  
-        "RA", "RC", "RG", "RU", "RT",
+        "DA",
+        "DC",
+        "DG",
+        "DT",
+        "DU",
+        # Two-letter ribonucleotides (RNA)
+        "RA",
+        "RC",
+        "RG",
+        "RU",
+        "RT",
         # Nucleic acid sugars (part of DNA/RNA backbone)
-        "RIB", "DRB"
+        "RIB",
+        "DRB",
     }
 
-
-
-    
     for ring, ligands in ligands_dict.items():
-        #Skip if no ligands found for this ring
+        # Skip if no ligands found for this ring
         if not ligands:
             continue
-        
-        #Filter out ONLY pure nucleotides, keep everything else
+
+        # Filter out ONLY pure nucleotides, keep everything else
         filtered_ligands = [lig for lig in ligands if lig not in pure_nucleotides]
-        
-        if not filtered_ligands:  #Skip if all ligands were pure nucleotides
+
+        if not filtered_ligands:  # Skip if all ligands were pure nucleotides
             logging.info(f"No non-nucleotide ligands found for {ring.name}")
             continue
-            
+
         pattern_query = ring.pattern_query
-        
+
         if isinstance(pattern_query, list):
             for i, pattern in enumerate(pattern_query):
-                if pattern:  
-                    query_id = f"{ring.name.lower()}_{i+1}"
+                if pattern:
+                    query_id = f"{ring.name.lower()}_{i + 1}"
                     query_string = f"{pattern}.Inside(Residues({filtered_ligands}))"
                     config["Queries"].append(create_query(query_id, query_string))
         elif pattern_query:
             query_id = ring.name.lower()
-            #Use the filtered ligand list (no pure nucleotides)
+            # Use the filtered ligand list (no pure nucleotides)
             query_string = f"{pattern_query}.Inside(Residues({filtered_ligands}))"
             config["Queries"].append(create_query(query_id, query_string))
 
-    
     if not config["Queries"]:
-        logging.error("No valid queries generated. Check if rings were found and have pattern queries defined.")
+        logging.error(
+            "No valid queries generated. Check if rings were found and have pattern queries defined."
+        )
         sys.exit(1)
     logging.debug(f"Before filtering: {ligands}")
     filtered_ligands = [lig for lig in ligands if lig not in pure_nucleotides]
@@ -122,7 +148,9 @@ def create_config_for_pq(path_to_main_output: Path, path_to_pdb_local: str, liga
     try:
         with open(path_to_main_output / PQ_CONFIG, "w") as outfile:
             json.dump(config, outfile)
-        logging.info(f"Configuration file successfully created with {len(config['Queries'])} queries.")
+        logging.info(
+            f"Configuration file successfully created with {len(config['Queries'])} queries."
+        )
     except OSError as e:
         logging.error(f"Error writing to {PQ_CONFIG}: {e}")
         sys.exit(1)
@@ -131,33 +159,28 @@ def create_config_for_pq(path_to_main_output: Path, path_to_pdb_local: str, liga
         sys.exit(1)
 
 
-
 def create_query(query_id: str, query_string: str) -> Dict[str, str]:
-    return {
-        "Id": query_id,
-        "QueryString": query_string
-    }
+    return {"Id": query_id, "QueryString": query_string}
 
 
 def start_program(results_folder: Path, pq_cmd):
-    commands = {
-        'posix': ['mono', pq_cmd],
-        'nt': [pq_cmd]
-    }
+    commands = {"posix": ["mono", pq_cmd], "nt": [pq_cmd]}
 
     command = commands.get(os.name, [])
     command.extend([results_folder, str(results_folder / PQ_CONFIG)])
 
     logging.info(f"Running Pattern Query on CPU count: {CPU_COUNT}...")
 
-    pq_process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, universal_newlines=True)
+    pq_process = subprocess.Popen(
+        command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, universal_newlines=True
+    )
 
     for line in pq_process.stdout:
         error_pattern = r"^\[.*?\] Error:"
         if re.match(error_pattern, line):
             logging.error(f"Error while running Pattern Query {line}")
             sys.exit(1)
-        print(line, end='')
+        print(line, end="")
 
 
 def prerequisites_are_met(input_dir: str, output_dir: str) -> bool:
@@ -181,7 +204,7 @@ def prerequisites_are_met(input_dir: str, output_dir: str) -> bool:
     if not file_exists(PQ_CMD):
         return False
 
-    if os.name == 'posix' and not is_mono_installed():
+    if os.name == "posix" and not is_mono_installed():
         return False
 
     output_path = Path(output_dir).resolve()
@@ -203,7 +226,7 @@ def prerequisites_are_met(input_dir: str, output_dir: str) -> bool:
 
 def get_results(src: Path, dst: Path):
     # Unzipping the results from Pattern Query
-    logging.info('Unzipping the results from Pattern Query...')
+    logging.info("Unzipping the results from Pattern Query...")
 
     try:
         unzip_file(src, dst)
@@ -216,7 +239,7 @@ def get_results(src: Path, dst: Path):
 
 
 def unzip_all(path_to_archives: Path) -> None:
-    lst = path_to_archives.glob('*.zip')
+    lst = path_to_archives.glob("*.zip")
     for zip_ in lst:
         try:
             unzip_file(zip_, path_to_archives)
@@ -231,10 +254,11 @@ def preprocess_data(data_path: Path) -> None:
 
 
 def main(input_path: str, output_path: str):
-    logging.basicConfig(level=logging.INFO,
-                        format='%(asctime)s - %(levelname)s - %(message)s',
-                        )
-    logging.info('Starting PrepareDataset...')
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(asctime)s - %(levelname)s - %(message)s",
+    )
+    logging.info("Starting PrepareDataset...")
     if not prerequisites_are_met(input_path, output_path):
         sys.exit(1)
 
@@ -250,19 +274,30 @@ def main(input_path: str, output_path: str):
 
     start_program(main_workflow_output_dir, pq_cmd=PQ_CMD)
 
-    get_results(main_workflow_output_dir / 'result' / 'result.zip', main_workflow_output_dir / 'result')
+    get_results(
+        main_workflow_output_dir / "result" / "result.zip",
+        main_workflow_output_dir / "result",
+    )
 
-    logging.info('PrepareDataset has completed successfully')
+    logging.info("PrepareDataset has completed successfully")
 
 
 if __name__ == "__main__":
-    parser = ArgumentParser(description="Get the dataset of rings using the PatternQuery")
-    required = parser.add_argument_group('required named arguments')
+    parser = ArgumentParser(
+        description="Get the dataset of rings using the PatternQuery"
+    )
+    required = parser.add_argument_group("required named arguments")
 
-    required.add_argument('-i', '--input', type=str, required=True,
-                          help='Path to the directory with input data (local pdb, ccp4 files, etc.)')
-    required.add_argument('-o', '--output', type=str, required=True,
-                          help='Path to the output directory')
+    required.add_argument(
+        "-i",
+        "--input",
+        type=str,
+        required=True,
+        help="Path to the directory with input data (local pdb, ccp4 files, etc.)",
+    )
+    required.add_argument(
+        "-o", "--output", type=str, required=True, help="Path to the output directory"
+    )
 
     args = parser.parse_args()
     main(args.input, args.output)
