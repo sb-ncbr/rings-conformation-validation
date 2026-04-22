@@ -9,7 +9,7 @@ from argparse import ArgumentParser
 from gemmi import cif
 from HelperModule.Ring import Ring
 from HelperModule.getter_functions import (
-    get_bonds_from_cif,
+    get_data_from_cif,
     get_atoms_from_pdb,
 )
 from HelperModule.helper_functions import are_bonds_correct
@@ -45,6 +45,12 @@ def run_filter(
         ligand = row.Residues.split()[0]
 
         filepath = input_path / "patterns" / (row.Id + ".pdb")
+
+        # only for debug/manual adding of rings, etc
+        if not filepath.exists():
+            logging.warning(f"{str(filepath)} does not exist.")
+            continue
+
         atom_names = get_atoms_from_pdb(filepath, ring)
 
         key = (ligand, frozenset(atom_names))
@@ -63,8 +69,10 @@ def run_filter(
             logging.warning(f"Ligand_block is None for {ligand}")
             continue
 
-        atom_bonds = get_bonds_from_cif(ligand_block)
-        is_correct = are_bonds_correct(atom_names, atom_bonds, ring)
+        bond_df, atom_df = get_data_from_cif(ligand_block)
+        is_correct = are_bonds_correct(
+            atom_names, bond_df, atom_df, ring, filepath, ligand
+        )
         processed_data_dict[key] = is_correct
 
         if is_correct:
@@ -78,8 +86,9 @@ def run_filter(
 
 
 def main(ring: str, output_path: str, input_path: str):
+    # TODO: remove debug
     logging.basicConfig(
-        level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
+        level=logging.DEBUG, format="%(asctime)s - %(levelname)s - %(message)s"
     )
 
     ring = ring.upper()
