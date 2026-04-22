@@ -188,5 +188,10 @@
         "theta1": 0, 
         "theta2": 0, 
         "theta3": -46.86
+    },
+    "P": {
+        "theta1": 0,
+        "theta2": 0, 
+        "theta3": 0
     }
 }
