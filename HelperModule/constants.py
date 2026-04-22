@@ -1,6 +1,7 @@
 from pathlib import Path
 
 PQ_CONFIG = "config.json"
+PDB = "pdb_copy_local"
 MAIN_DIR = "validation_data"
 DEFAULT_DICT_NAME = "components.cif.gz"
 CCP4_DIR = "ccp4"

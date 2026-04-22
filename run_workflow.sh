@@ -30,12 +30,12 @@ OUTPUT_FOLDER="$2"
 
 # Download of data
 # None: $INPUT_DATA_FOLDER should be created before running this script
-# python3 DownloadData.py -j 4 -d "$INPUT_DATA_FOLDER" $ONEDATA_ID
-# exit_code=$?
-# if [ $exit_code -ne 0 ]; then
-#     echo "Error: DownloadData failed with exit code $exit_code"
-#     exit $exit_code
-# fi
+python3 DownloadData.py -j 4 -d "$INPUT_DATA_FOLDER" $ONEDATA_ID
+exit_code=$?
+if [ $exit_code -ne 0 ]; then
+    echo "Error: DownloadData failed with exit code $exit_code"
+    exit $exit_code
+fi
 
 # Prepare dataset using PatternQuery
 python3 PrepareDataset.py -i "$INPUT_DATA_FOLDER/${DATA_FOLDER}" -o "$OUTPUT_FOLDER"
