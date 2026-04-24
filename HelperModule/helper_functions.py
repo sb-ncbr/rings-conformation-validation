@@ -22,7 +22,7 @@ def are_bonds_correct(
     mask = bond_df["atom_id_1"].isin(atom_names) & bond_df["atom_id_2"].isin(atom_names)
     current_ring_df = bond_df[mask]
 
-    metal_atoms = ["FE", "MN", "CO", "RU", "TI", "ZR", "NI", "CR", "RH"]
+    metal_atoms = ["FE", "MN", "CO", "RU", "TI", "ZR", "NI", "CR", "RH", "IR", "RE", "OS"]
 
     if ring is Ring.BENZENE:
         return (current_ring_df["aromatic"] == "Y").all()
