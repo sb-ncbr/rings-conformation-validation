@@ -3,6 +3,7 @@ import logging
 from multiprocessing import Pool, cpu_count
 import argparse
 from pathlib import Path
+import pickle
 import shutil
 from electron_density_coverage_analysis import run_as_function
 
@@ -38,21 +39,21 @@ def process_args(args: argparse.Namespace):
     return a
 
 
-def run_exe(ligand_filepath: Path, ccp4_dir_path: Path, arguments: argparse.Namespace):
+def run_exe(ring_path: Path, ccp4_dir_path: Path, arguments: argparse.Namespace):
     logging.basicConfig(level=logging.INFO,
                         format='%(asctime)s - %(levelname)s - %(message)s',
                         )
     try:
-        pq_pdb_name = ligand_filepath.name.split(".")[0]
+        pq_pdb_name = ring_path.name.split(".")[0]
         pdb_id = pq_pdb_name.split('_')[1]
-        residue_id = ligand_filepath.parent.parent.name
+        ligand_id = ring_path.parent.parent.name
         ccp4_filepath = (ccp4_dir_path / (pdb_id + '.ccp4.gz')).resolve()
-        arguments.input_cycle_pdb = str(ligand_filepath.resolve())
+        arguments.input_cycle_pdb = str(ring_path.resolve())
         arguments.input_density_ccp4 = str(ccp4_filepath)
 
         logging.info(f"Analysing file: {arguments.input_cycle_pdb}...")
         output = run_as_function(arguments)
-        result = (pq_pdb_name, residue_id, output)
+        result = (pq_pdb_name, ligand_id, output)
 
     except Exception as e:
         logging.error(e, stack_info=True, exc_info=True)
@@ -91,27 +92,64 @@ def run_analysis(args: argparse.Namespace):
             params = params + "m"
 
         ring_types = ['cyclohexane', 'cyclopentane', 'benzene', 'oxane', 'oxolane']
+        ccp4_dir = Path(args.input_dir) / "ccp4"
 
         for ring_type in ring_types:
             path_to_output = Path(args.rootdir).resolve() / "validation_data" / ring_type / "el-density-output"
 
+            saves_path = Path(args.input_dir) / "el_density_saves"
+            saves_path.mkdir(parents=True, exist_ok=True)
+
+            filename_stem = f"{ring_type}_params_{params}_analysis_output"
+            pkl_path = saves_path / f"{filename_stem}.pkl"
+            csv_path = path_to_output / f"{filename_stem}.csv"
+
+            # e.g. {"CVM_4iut_0": "4;6"} for simple mode
+            processed_data_dict = {}
+            if pkl_path.is_file():
+                with pkl_path.open("rb") as f:
+                    processed_data_dict = pickle.load(f)
+
             _create_output_folder(path_to_output)
 
-            filepaths = get_filepaths(Path(args.rootdir), Path(args.ccp4_dir), ring_type)
+            filepaths = get_filepaths(Path(args.rootdir), ccp4_dir, ring_type)
             if len(filepaths) == 0:
                 logging.info(f"No files for analysis found for ring {ring_type}")
                 continue
+            
+            files_to_process = []
+            precomputed_rows = []
+            for f in filepaths:
+                key = f.stem
+                if key in processed_data_dict:
+                    precomputed_rows.append((key, *processed_data_dict[key]))
+                    continue
+                    
+                files_to_process.append(f)
+            
+            modified_filepaths = [(f, ccp4_dir, arguments) for f in files_to_process]
 
-            cvs_filename = ring_type + '_params_' + params + '_analysis_output.csv'
-            with open(path_to_output / cvs_filename, mode='w', newline='') as f:
+            with open(csv_path, mode='w', newline='', buffering=1) as f:
                 w = csv.writer(f, delimiter=',', quotechar='"', quoting=csv.QUOTE_MINIMAL)
 
+                logging.info(f"[{ring_type.capitalize()}]: Writing precomputed data for {len(precomputed_rows)} rings.")
+                w.writerows(precomputed_rows)
+                logging.info(f"[{ring_type.capitalize()}]: Done.")
+
+                if len(files_to_process) == 0:
+                    logging.info(f"[{ring_type.capitalize()}]: No files to process. Computation will not start.")
+                    continue
+
                 with Pool(int(CPU_COUNT)) as p:
-                    modified_filepaths = [(f, Path(args.ccp4_dir), arguments) for f in filepaths]
-                    logging.info(f"[{ring_type.capitalize()}]: Starting analysis for {len(filepaths)} files...")
-                    rows = p.starmap(run_exe, modified_filepaths)
-                    w.writerows(rows)
-                    logging.info(f"[{ring_type.capitalize()}]: Finished analysis for {len(filepaths)} files.")
+                    logging.info(f"[{ring_type.capitalize()}]: Starting analysis for {len(files_to_process)} files...")
+                    for ring_id, ligand, result in p.starmap(run_exe, modified_filepaths):
+                        w.writerow((ring_id, ligand, result))
+                        processed_data_dict[ring_id] = (ligand, result)
+
+                    logging.info(f"[{ring_type.capitalize()}]: Finished analysis for {len(files_to_process)} files.")
+
+            with pkl_path.open("wb") as f:
+                pickle.dump(processed_data_dict, f)
 
     except Exception as e:
         logging.error(e, stack_info=True, exc_info=True)
@@ -121,8 +159,8 @@ def main():
     parser = argparse.ArgumentParser(description='ED coverage analysis')
     parser.add_argument('rootdir', type=str,
                         help='Root directory of the result data (<ROOTDIR>/validation_data/etc)')
-    parser.add_argument('ccp4_dir',
-                        type=str, help='Directory with ccp4 files')
+    parser.add_argument('input_dir',
+                        type=str, help='Directory with input files, containing folder ccp4')
 
     parser.add_argument('-s',
                         action='store_true', help='Simple mode - output is two numbers: first is the number of '
