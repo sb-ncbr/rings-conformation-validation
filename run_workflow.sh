@@ -115,7 +115,7 @@ python3 CompareHR.py  "oxolane" "$CC_OUTPUT_PATH/output_HR.json" "$CC_OUTPUT_PAT
 
 
 # analyse electron density coverage
-python3 electron_density_coverage_analysis/main.py "$OUTPUT_FOLDER" "${INPUT_DATA_FOLDER}/${DATA_FOLDER}"
+python3 AnalyseCoverage.py "$OUTPUT_FOLDER" "${INPUT_DATA_FOLDER}/${DATA_FOLDER}"
 
 # analyse and summarise results
 python3 RingAnalysisResult.py -r "$CYCLOPENTANE" -i "${INPUT_DATA_FOLDER}/${DATA_FOLDER}" -o "$OUTPUT_FOLDER"

@@ -1,13 +1,16 @@
 import csv
 import logging
-from multiprocessing import Pool, cpu_count
 import argparse
-from pathlib import Path
 import pickle
 import shutil
+import sys
+from typing import List
 import gemmi
 import statistics as st
 import math
+from multiprocessing import Pool, cpu_count
+from pathlib import Path
+from HelperModule.Ring import Ring
 
 CPU_COUNT = cpu_count()
 
@@ -24,23 +27,7 @@ def _create_output_folder(output_folder: Path):
     return output_folder
 
 
-def process_args(args: argparse.Namespace):
-    try:
-        a = argparse.Namespace()
-        a.s = True
-        a.closest_voxel = False
-        a.more_or_equal = False
-        if args.closest_voxel:
-            a.closest_voxel = True
-        if args.more_or_equal:
-            a.more_or_equal = True
-    except Exception as e:
-        logging.error(e, stack_info=True, exc_info=True)
-
-    return a
-
-
-def run_exe(ring_path: Path, ccp4_dir_path: Path, arguments: argparse.Namespace):
+def run_exe(ring_path: Path, ccp4_dir_path: Path, more_or_equal: bool, closest_voxel: bool):
     logging.basicConfig(level=logging.INFO,
                         format='%(asctime)s - %(levelname)s - %(message)s',
                         )
@@ -48,12 +35,11 @@ def run_exe(ring_path: Path, ccp4_dir_path: Path, arguments: argparse.Namespace)
         pq_pdb_name = ring_path.name.split(".")[0]
         pdb_id = pq_pdb_name.split('_')[1]
         ligand_id = ring_path.parent.parent.name
-        ccp4_filepath = (ccp4_dir_path / (pdb_id + '.ccp4.gz')).resolve()
-        arguments.input_cycle_pdb = str(ring_path.resolve())
-        arguments.input_density_ccp4 = str(ccp4_filepath)
+        input_density_ccp4 = str((ccp4_dir_path / (pdb_id + '.ccp4.gz')).resolve())
+        input_cycle_pdb = str(ring_path.resolve())
 
-        logging.info(f"Analysing file: {arguments.input_cycle_pdb}...")
-        output = run_as_function(arguments)
+        logging.info(f"Analysing file: {input_cycle_pdb}...")
+        output = run_calculation(input_density_ccp4, input_cycle_pdb, more_or_equal, closest_voxel)
         result = (pq_pdb_name, ligand_id, output)
 
     except Exception as e:
@@ -82,30 +68,82 @@ def get_filepaths(rootdir: Path, ccp4_dir: Path, ring_type: str):
     return l
 
 
-def run_analysis(args: argparse.Namespace):
+# compare intensity, corresponding to the given position, to the threshold for isosurface (MORE vs MORE OR EQUAL)
+def determine_atom_coverage(pos, map, sigma_lvl, more_or_equal, closest_voxel):
+    try:
+        if more_or_equal:
+            return get_intensity(pos, map, closest_voxel) >= sigma_lvl
+        return get_intensity(pos, map, closest_voxel) > sigma_lvl
+    except Exception as e:
+        logging.error(e, stack_info=True, exc_info=True)
+
+
+# get intensity corresponding to the given position (trilinear interpolation vs itensity of the closest voxel)
+def get_intensity(pos, map, closest_voxel):
+    try:
+        if closest_voxel:
+            return map.grid.get_nearest_point(pos).value
+        return map.grid.interpolate_value(pos)
+    except Exception as e:
+        logging.error(e, stack_info=True, exc_info=True)
+
+
+def run_calculation(input_density_ccp4, input_cycle_pdb, more_or_equal, closest_voxel):
+    try:
+        output = None
+        str = gemmi.read_pdb(input_cycle_pdb)
+        map = gemmi.read_ccp4_map(input_density_ccp4)
+        map.setup(float('nan'))
+
+        # calculate the sigma values
+        grid_values = []
+        for point in map.grid:
+            if not math.isnan(point.value):
+                grid_values.append(point.value)
+
+        std = st.pstdev(grid_values)
+        sigma_lvl = 1.5 * std
+
+        total_atom_count = 0
+        covered_atoms_count = 0
+        for model in str:
+            for chain in model:
+                for res in chain:
+                    for atom in res:
+                        total_atom_count = total_atom_count + 1
+                        if determine_atom_coverage(atom.pos, map, sigma_lvl, more_or_equal, closest_voxel):
+                            covered_atoms_count = covered_atoms_count + 1
+
+        output = f'{covered_atoms_count};{total_atom_count}'
+
+    except Exception as e:
+        logging.error(e, stack_info=True, exc_info=True)
+
+    return output
+
+
+def main(output_dir: str, input_dir: str, rings: List[str], more_or_equal: bool, closest_voxel: bool):
 
     try:
-        arguments = process_args(args)
         params = ''
-        if arguments.closest_voxel:
-            params = params + "c"
-        if arguments.more_or_equal:
-            params = params + "m"
+        if closest_voxel:
+            params += "c"
+        if more_or_equal:
+            params += "m"
 
-        ring_types = ['cyclohexane', 'cyclopentane', 'benzene', 'oxane', 'oxolane']
-        ccp4_dir = Path(args.input_dir) / "ccp4"
+        ccp4_dir = Path(input_dir) / "ccp4"
 
-        for ring_type in ring_types:
-            path_to_output = Path(args.rootdir).resolve() / "validation_data" / ring_type / "el-density-output"
+        for ring_type in rings:
+            path_to_output = Path(output_dir).resolve() / "validation_data" / ring_type / "el-density-output"
 
-            saves_path = Path(args.input_dir) / "el_density_saves"
+            saves_path = Path(input_dir) / "el_density_saves"
             saves_path.mkdir(parents=True, exist_ok=True)
 
             filename_stem = f"{ring_type}_params_{params}_analysis_output"
             pkl_path = saves_path / f"{filename_stem}.pkl"
             csv_path = path_to_output / f"{filename_stem}.csv"
 
-            # e.g. {"CVM_4iut_0": "4;6"} for simple mode
+            # e.g. {"CVM_4iut_0": "4;6"}
             processed_data_dict = {}
             if pkl_path.is_file():
                 with pkl_path.open("rb") as f:
@@ -113,7 +151,7 @@ def run_analysis(args: argparse.Namespace):
 
             _create_output_folder(path_to_output)
 
-            filepaths = get_filepaths(Path(args.rootdir), ccp4_dir, ring_type)
+            filepaths = get_filepaths(Path(output_dir), ccp4_dir, ring_type)
             if len(filepaths) == 0:
                 logging.info(f"No files for analysis found for ring {ring_type}")
                 continue
@@ -127,14 +165,16 @@ def run_analysis(args: argparse.Namespace):
                     continue
                     
                 files_to_process.append(f)
+
             
-            modified_filepaths = [(f, ccp4_dir, arguments) for f in files_to_process]
+            modified_filepaths = [(f, ccp4_dir, more_or_equal, closest_voxel) for f in files_to_process]
 
             with open(csv_path, mode='w', newline='', buffering=1) as f:
                 w = csv.writer(f, delimiter=',', quotechar='"', quoting=csv.QUOTE_MINIMAL)
 
-                logging.info(f"[{ring_type.capitalize()}]: Writing precomputed data for {len(precomputed_rows)} rings.")
-                w.writerows(precomputed_rows)
+                if len(precomputed_rows) != 0:
+                    logging.info(f"[{ring_type.capitalize()}]: Writing precomputed data for {len(precomputed_rows)} rings.")
+                    w.writerows(precomputed_rows)
                 logging.info(f"[{ring_type.capitalize()}]: Done.")
 
                 if len(files_to_process) == 0:
@@ -156,74 +196,17 @@ def run_analysis(args: argparse.Namespace):
         logging.error(e, stack_info=True, exc_info=True)
 
 
-def run_as_function(args: argparse.Namespace):
-    return run_calculation(args)
-
-
-# compare intensity, corresponding to the given position, to the threshold for isosurface (MORE vs MORE OR EQUAL)
-def determine_atom_coverage(pos, map, sigma_lvl, args: argparse.Namespace):
-    try:
-        if args.more_or_equal:
-            return get_intensity(pos, map, args) >= sigma_lvl
-        return get_intensity(pos, map, args) > sigma_lvl
-    except Exception as e:
-        logging.error(e, stack_info=True, exc_info=True)
-
-
-# get intensity corresponding to the given position (trilinear interpolation vs itensity of the closest voxel)
-def get_intensity(pos, map, args: argparse.Namespace):
-    try:
-        if args.closest_voxel:
-            return map.grid.get_nearest_point(pos).value
-        return map.grid.interpolate_value(pos)
-    except Exception as e:
-        logging.error(e, stack_info=True, exc_info=True)
-
-
-def run_calculation(args: argparse.Namespace):
-    try:
-        output = None
-        str = gemmi.read_pdb(args.input_cycle_pdb)
-        map = gemmi.read_ccp4_map(args.input_density_ccp4)
-        map.setup(float('nan'))
-
-        # calculate the sigma values
-        grid_values = []
-        for point in map.grid:
-            if not math.isnan(point.value):
-                grid_values.append(point.value)
-
-        std = st.pstdev(grid_values)
-        sigma_lvl = 1.5 * std
-
-        total_atom_count = 0
-        covered_atoms_count = 0
-        for model in str:
-            for chain in model:
-                for res in chain:
-                    for atom in res:
-                        total_atom_count = total_atom_count + 1
-                        if determine_atom_coverage(atom.pos, map, sigma_lvl, args):
-                            covered_atoms_count = covered_atoms_count + 1
-
-        output = f'{covered_atoms_count};{total_atom_count}'
-
-    except Exception as e:
-        logging.error(e, stack_info=True, exc_info=True)
-
-    return output
-
-
-def main():
-    parser = argparse.ArgumentParser(description='ED coverage analysis')
+if __name__ == '__main__':
+    parser = argparse.ArgumentParser(description='ED coverage analysis. Output is two numbers: first is the number of '
+                                                  'covered atoms, the second is the total number of atoms in a cycle')
     parser.add_argument('rootdir', type=str,
                         help='Root directory of the result data (<ROOTDIR>/validation_data/etc)')
     parser.add_argument('input_dir',
                         type=str, help='Directory with input files, containing folder ccp4')
 
-    parser.add_argument('-s',
-                        action='store_true', help='Simple mode - output is two numbers: first is the number of '
-                                                  'covered atoms, the second is the total number of atoms in a cycle')
+    parser.add_argument("-r", "--rings", nargs="+", type=str,
+                        choices=[r.name for r in Ring], help="Choose ring type(s)")
+    
     parser.add_argument('-m', '--more_or_equal',
                         action='store_true', help='Atom is considered to be covered by the electron density when the '
                                                   'corresponding intensity is MORE OR EQUAL to the threshold for the '
@@ -233,12 +216,20 @@ def main():
                                                   'voxel is used')
     
     args = parser.parse_args()
+    if args.rings is None:
+        selected_rings = [r.name for r in Ring]
+    else:
+        selected_rings = args.rings
+
+    for ring in selected_rings:
+        if ring.upper() not in Ring.__members__.keys():
+            logging.error(
+                f"Ring {ring} is not a valid Ring. Currently supported: {[e.name for e in Ring]} Exiting..."
+            )
+            sys.exit(1)
+        
     logging.basicConfig(level=logging.INFO,
                         format='%(asctime)s - %(levelname)s - %(message)s',
                         )
     logging.info(f"Running electron density coverage analysis on CPU count: {CPU_COUNT}")
-    run_analysis(args)
-
-
-if __name__ == '__main__':
-    main()
+    main(args.rootdir, args.input_dir, selected_rings, args.more_or_equal, args.closest_voxel)
