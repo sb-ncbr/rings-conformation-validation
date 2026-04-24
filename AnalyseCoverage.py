@@ -4,6 +4,7 @@ import argparse
 import pickle
 import shutil
 import sys
+import pandas as pd
 from typing import List
 import gemmi
 import statistics as st
@@ -13,6 +14,7 @@ from pathlib import Path
 from HelperModule.Ring import Ring
 
 CPU_COUNT = cpu_count()
+NAME = "Ring Coverage"
 
 
 def _create_output_folder(output_folder: Path):
@@ -27,45 +29,49 @@ def _create_output_folder(output_folder: Path):
     return output_folder
 
 
+def run_exe_wrapper(params):
+    return run_exe(*params)
+
+
 def run_exe(ring_path: Path, ccp4_dir_path: Path, more_or_equal: bool, closest_voxel: bool):
     logging.basicConfig(level=logging.INFO,
                         format='%(asctime)s - %(levelname)s - %(message)s',
                         )
     try:
-        pq_pdb_name = ring_path.name.split(".")[0]
-        pdb_id = pq_pdb_name.split('_')[1]
-        ligand_id = ring_path.parent.parent.name
+        ring_type = ring_path.parents[3].name
+        ring_id = ring_path.name.split(".")[0]
+        pdb_id = ring_id.split('_')[1]
+        ligand_id = ring_path.parents[1].name
         input_density_ccp4 = str((ccp4_dir_path / (pdb_id + '.ccp4.gz')).resolve())
         input_cycle_pdb = str(ring_path.resolve())
 
-        logging.info(f"Analysing file: {input_cycle_pdb}...")
+        logging.info(f"[{NAME}]: Analysing: {input_cycle_pdb}...")
         output = run_calculation(input_density_ccp4, input_cycle_pdb, more_or_equal, closest_voxel)
-        result = (pq_pdb_name, ligand_id, output)
+        result = (ring_id, ring_type, ligand_id, output)
 
     except Exception as e:
         logging.error(e, stack_info=True, exc_info=True)
     return result
 
 
-def get_filepaths(rootdir: Path, ccp4_dir: Path, ring_type: str):
+def get_filepaths(rootdir: Path, ccp4_dir: Path, rings: List[str]):
     try:
-        l = []
-
         all_ccp4_files = ccp4_dir.glob('**/*')
-        pdb_ids_for_which_ccp4_is_available = [x.stem.removesuffix('.ccp4') for x in all_ccp4_files]
-        for f in Path(rootdir / 'validation_data' / ring_type / 'filtered_ligands').rglob("*"):
+        pdb_ids_for_which_ccp4_is_available = {x.stem.removesuffix('.ccp4') for x in all_ccp4_files}
 
-            if f.is_file():
-                # get path
-                stem = f.stem
-                pdb_id = stem.split('_')[1]
-                if pdb_id in pdb_ids_for_which_ccp4_is_available:
-                    l.append(f)
-        logging.info(f"[{ring_type.capitalize()}]: There are {len(l)} PDB structures with corresponding CCP4 file "
+        base = Path(rootdir) / "validation_data"
+        filepaths_to_rings = [
+            f
+            for ring_type in rings
+            for f in (base / ring_type / "filtered_ligands").rglob("*")
+            if f.is_file() and f.stem.split('_')[1] in pdb_ids_for_which_ccp4_is_available
+        ]
+        logging.info(f"[{NAME}]: There are {len(filepaths_to_rings)} ring structures with corresponding CCP4 file "
                      f"available.")
+
     except Exception as e:
         logging.error(e, stack_info=True, exc_info=True)
-    return l
+    return filepaths_to_rings
 
 
 # compare intensity, corresponding to the given position, to the threshold for isosurface (MORE vs MORE OR EQUAL)
@@ -122,7 +128,7 @@ def run_calculation(input_density_ccp4, input_cycle_pdb, more_or_equal, closest_
     return output
 
 
-def main(output_dir: str, input_dir: str, rings: List[str], more_or_equal: bool, closest_voxel: bool):
+def main(root_dir: str, input_dir: str, rings: List[str], more_or_equal: bool, closest_voxel: bool):
 
     try:
         params = ''
@@ -131,66 +137,75 @@ def main(output_dir: str, input_dir: str, rings: List[str], more_or_equal: bool,
         if more_or_equal:
             params += "m"
 
+        logging.info(f"[{NAME}]: Rings selected: {rings}")
         ccp4_dir = Path(input_dir) / "ccp4"
+        output_path = Path(root_dir).resolve() / "validation_data" / "el-density-output"
+        output_path.mkdir(parents=True, exist_ok=True)
 
-        for ring_type in rings:
-            path_to_output = Path(output_dir).resolve() / "validation_data" / ring_type / "el-density-output"
+        saves_path = Path(input_dir) / "el_density_saves"
+        saves_path.mkdir(parents=True, exist_ok=True)
 
-            saves_path = Path(input_dir) / "el_density_saves"
-            saves_path.mkdir(parents=True, exist_ok=True)
+        filename_stem = f"_params_{params}_analysis_output"
+        pkl_path = saves_path / f"{filename_stem}.pkl"
+        csv_path = output_path / f"{filename_stem}.csv"
 
-            filename_stem = f"{ring_type}_params_{params}_analysis_output"
-            pkl_path = saves_path / f"{filename_stem}.pkl"
-            csv_path = path_to_output / f"{filename_stem}.csv"
+        # e.g. {"CVM_4iut_0": "4;6"}
+        processed_data_dict = {}
+        if pkl_path.is_file():
+            with pkl_path.open("rb") as f:
+                processed_data_dict = pickle.load(f)
 
-            # e.g. {"CVM_4iut_0": "4;6"}
-            processed_data_dict = {}
-            if pkl_path.is_file():
-                with pkl_path.open("rb") as f:
-                    processed_data_dict = pickle.load(f)
+        _create_output_folder(output_path)
 
-            _create_output_folder(path_to_output)
-
-            filepaths = get_filepaths(Path(output_dir), ccp4_dir, ring_type)
-            if len(filepaths) == 0:
-                logging.info(f"No files for analysis found for ring {ring_type}")
+        filepaths = get_filepaths(Path(root_dir), ccp4_dir, rings)
+        if len(filepaths) == 0:
+            logging.info("No files for analysis were found.")
+            return
+        
+        files_to_process = []
+        precomputed_rows = []
+        for f in filepaths:
+            key = f.stem
+            if key in processed_data_dict:
+                precomputed_rows.append((key, *processed_data_dict[key]))
                 continue
-            
-            files_to_process = []
-            precomputed_rows = []
-            for f in filepaths:
-                key = f.stem
-                if key in processed_data_dict:
-                    precomputed_rows.append((key, *processed_data_dict[key]))
-                    continue
+                
+            files_to_process.append(f)
+
+        
+        modified_filepaths = [(f, ccp4_dir, more_or_equal, closest_voxel) for f in files_to_process]
+
+        with open(csv_path, mode='w', newline='', buffering=1) as f:
+            w = csv.writer(f, delimiter=',', quotechar='"', quoting=csv.QUOTE_MINIMAL)
+            header = ('Id', 'Ring', 'Ligand', 'Covered/Total' )
+            w.writerow(header)
+
+            if len(precomputed_rows) != 0:
+                logging.info(f"[{NAME}]: Writing precomputed data for {len(precomputed_rows)} rings.")
+                w.writerows(precomputed_rows)
+            logging.info(f"[{NAME}]: Done.")
+
+            if len(files_to_process) == 0:
+                logging.info(f"[{NAME}]: No files to process. Computation will not start.")
+                return
+
+            logging.info(f"[{NAME}]: Running electron density coverage analysis on CPU count: {CPU_COUNT}")
+            with Pool(int(CPU_COUNT)) as p:
+                logging.info(f"[{NAME}]: Starting analysis for {len(files_to_process)} files...")
+                for ring_id, ring_type, ligand, result in p.imap_unordered(run_exe_wrapper, modified_filepaths):
                     
-                files_to_process.append(f)
+                    w.writerow((ring_id, ring_type, ligand, result))
+                    processed_data_dict[ring_id] = (ring_type, ligand, result)
 
-            
-            modified_filepaths = [(f, ccp4_dir, more_or_equal, closest_voxel) for f in files_to_process]
+                logging.info(f"[{NAME}]: Finished analysis for {len(files_to_process)} files.")
 
-            with open(csv_path, mode='w', newline='', buffering=1) as f:
-                w = csv.writer(f, delimiter=',', quotechar='"', quoting=csv.QUOTE_MINIMAL)
+        df = pd.read_csv(csv_path)
+        for ring_type, subdf in df.groupby("Ring"):
+            result_dir = Path(root_dir).resolve() / "validation_data" / ring_type / "el-density-output"
+            subdf.to_csv(result_dir / f"{ring_type}{filename_stem}.csv", index=False)
 
-                if len(precomputed_rows) != 0:
-                    logging.info(f"[{ring_type.capitalize()}]: Writing precomputed data for {len(precomputed_rows)} rings.")
-                    w.writerows(precomputed_rows)
-                logging.info(f"[{ring_type.capitalize()}]: Done.")
-
-                if len(files_to_process) == 0:
-                    logging.info(f"[{ring_type.capitalize()}]: No files to process. Computation will not start.")
-                    continue
-
-                with Pool(int(CPU_COUNT)) as p:
-                    logging.info(f"[{ring_type.capitalize()}]: Starting analysis for {len(files_to_process)} files...")
-                    for ring_id, ligand, result in p.starmap(run_exe, modified_filepaths):
-                        w.writerow((ring_id, ligand, result))
-                        processed_data_dict[ring_id] = (ligand, result)
-
-                    logging.info(f"[{ring_type.capitalize()}]: Finished analysis for {len(files_to_process)} files.")
-
-            with pkl_path.open("wb") as f:
-                pickle.dump(processed_data_dict, f)
+        with pkl_path.open("wb") as f:
+            pickle.dump(processed_data_dict, f)
 
     except Exception as e:
         logging.error(e, stack_info=True, exc_info=True)
@@ -204,8 +219,7 @@ if __name__ == '__main__':
     parser.add_argument('input_dir',
                         type=str, help='Directory with input files, containing folder ccp4')
 
-    parser.add_argument("-r", "--rings", nargs="+", type=str,
-                        choices=[r.name for r in Ring], help="Choose ring type(s)")
+    parser.add_argument("-r", "--rings", nargs="+", type=str, help=f"Choose ring type(s). Currently supported: {[e.name for e in Ring]}")
     
     parser.add_argument('-m', '--more_or_equal',
                         action='store_true', help='Atom is considered to be covered by the electron density when the '
@@ -217,19 +231,18 @@ if __name__ == '__main__':
     
     args = parser.parse_args()
     if args.rings is None:
-        selected_rings = [r.name for r in Ring]
+        selected_rings = [r.name.lower() for r in Ring]
     else:
         selected_rings = args.rings
-
-    for ring in selected_rings:
-        if ring.upper() not in Ring.__members__.keys():
-            logging.error(
-                f"Ring {ring} is not a valid Ring. Currently supported: {[e.name for e in Ring]} Exiting..."
-            )
-            sys.exit(1)
+        for ring in selected_rings:
+            if ring.upper() not in Ring.__members__.keys():
+                logging.error(
+                    f"Ring {ring} is not a valid Ring. Currently supported: {[e.name for e in Ring]} Exiting..."
+                )
+                sys.exit(1)
+        selected_rings = [r.lower() for r in selected_rings]
         
     logging.basicConfig(level=logging.INFO,
                         format='%(asctime)s - %(levelname)s - %(message)s',
                         )
-    logging.info(f"Running electron density coverage analysis on CPU count: {CPU_COUNT}")
     main(args.rootdir, args.input_dir, selected_rings, args.more_or_equal, args.closest_voxel)
