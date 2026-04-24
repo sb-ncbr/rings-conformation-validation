@@ -3,9 +3,9 @@ import logging
 import argparse
 import pickle
 import shutil
-import sys
 import pandas as pd
-from typing import List
+from typing import List, Set
+from collections import defaultdict
 import gemmi
 import statistics as st
 import math
@@ -33,45 +33,47 @@ def run_exe_wrapper(params):
     return run_exe(*params)
 
 
-def run_exe(ring_path: Path, ccp4_dir_path: Path, more_or_equal: bool, closest_voxel: bool):
+def run_exe(path_to_ccp4file: Path, rings_paths: List[str], more_or_equal: bool, closest_voxel: bool):
     logging.basicConfig(level=logging.INFO,
                         format='%(asctime)s - %(levelname)s - %(message)s',
                         )
     try:
-        ring_type = ring_path.parents[3].name
-        ring_id = ring_path.name.split(".")[0]
-        pdb_id = ring_id.split('_')[1]
-        ligand_id = ring_path.parents[1].name
-        input_density_ccp4 = str((ccp4_dir_path / (pdb_id + '.ccp4.gz')).resolve())
-        input_cycle_pdb = str(ring_path.resolve())
-
-        logging.info(f"[{NAME}]: Analysing: {input_cycle_pdb}...")
-        output = run_calculation(input_density_ccp4, input_cycle_pdb, more_or_equal, closest_voxel)
-        result = (ring_id, ring_type, ligand_id, output)
+        # output of run_calculation is in this format: { benzene: [{ABC_2xyz_0: 3;5}, {...}], oxane: {...} }
+        output = run_calculation(path_to_ccp4file, rings_paths, more_or_equal, closest_voxel)
+        results_list = []
+        for ring_type in output:
+            for inner_dict in output[ring_type]:
+                for ring_id, coverage in inner_dict.items():
+                    results_list.append((ring_id, ring_type, ring_id.split('_')[0], coverage))
 
     except Exception as e:
         logging.error(e, stack_info=True, exc_info=True)
-    return result
+    return results_list # List of tuples (ring_id, ring_type, ligand, coverage)
 
 
-def get_filepaths(rootdir: Path, ccp4_dir: Path, rings: List[str]):
+def map_pdb_to_rings_filepaths(rootdir: Path, ccp4_dir: Path, rings: Set[str]):
     try:
+        res = defaultdict(set)
         all_ccp4_files = ccp4_dir.glob('**/*')
         pdb_ids_for_which_ccp4_is_available = {x.stem.removesuffix('.ccp4') for x in all_ccp4_files}
 
+        if len(pdb_ids_for_which_ccp4_is_available) == 0:
+            return None
+
         base = Path(rootdir) / "validation_data"
-        filepaths_to_rings = [
-            f
-            for ring_type in rings
-            for f in (base / ring_type / "filtered_ligands").rglob("*")
-            if f.is_file() and f.stem.split('_')[1] in pdb_ids_for_which_ccp4_is_available
-        ]
-        logging.info(f"[{NAME}]: There are {len(filepaths_to_rings)} ring structures with corresponding CCP4 file "
+        for ring_type in rings:
+            for f in (base / ring_type / "filtered_ligands").rglob("*"):
+                if f.is_file():
+                    pdb_id = f.stem.split('_')[1]
+                    if pdb_id in pdb_ids_for_which_ccp4_is_available:
+                        res[pdb_id].add(f)
+
+        logging.info(f"[{NAME}]: There are {len(res)} pdb structures and {sum(len(v) for v in res.values())} rings with corresponding CCP4 file "
                      f"available.")
 
     except Exception as e:
         logging.error(e, stack_info=True, exc_info=True)
-    return filepaths_to_rings
+    return res
 
 
 # compare intensity, corresponding to the given position, to the threshold for isosurface (MORE vs MORE OR EQUAL)
@@ -94,11 +96,10 @@ def get_intensity(pos, map, closest_voxel):
         logging.error(e, stack_info=True, exc_info=True)
 
 
-def run_calculation(input_density_ccp4, input_cycle_pdb, more_or_equal, closest_voxel):
+def run_calculation(input_density_ccp4: Path, rings_paths: List[str], more_or_equal, closest_voxel):
     try:
-        output = None
-        str = gemmi.read_pdb(input_cycle_pdb)
-        map = gemmi.read_ccp4_map(input_density_ccp4)
+        output = defaultdict(list) # { benzene: [{ABC_2xyz_0: 3;5}, {...}], oxane: {...} }
+        map = gemmi.read_ccp4_map(str(input_density_ccp4))
         map.setup(float('nan'))
 
         # calculate the sigma values
@@ -110,17 +111,23 @@ def run_calculation(input_density_ccp4, input_cycle_pdb, more_or_equal, closest_
         std = st.pstdev(grid_values)
         sigma_lvl = 1.5 * std
 
-        total_atom_count = 0
-        covered_atoms_count = 0
-        for model in str:
-            for chain in model:
-                for res in chain:
-                    for atom in res:
-                        total_atom_count = total_atom_count + 1
-                        if determine_atom_coverage(atom.pos, map, sigma_lvl, more_or_equal, closest_voxel):
-                            covered_atoms_count = covered_atoms_count + 1
+        for ring_path in rings_paths:
+            ring_pdbfile = gemmi.read_pdb(str(Path(ring_path).resolve()))
+            total_atom_count = 0
+            covered_atoms_count = 0
+            for model in ring_pdbfile:
+                for chain in model:
+                    for res in chain:
+                        for atom in res:
+                            total_atom_count = total_atom_count + 1
+                            if determine_atom_coverage(atom.pos, map, sigma_lvl, more_or_equal, closest_voxel):
+                                covered_atoms_count = covered_atoms_count + 1
 
-        output = f'{covered_atoms_count};{total_atom_count}'
+            coverage = f'{covered_atoms_count};{total_atom_count}'
+            ring_type = ring_path.parents[3].name
+            ring_id = ring_path.name.split(".")[0]
+            curr_result_record = {ring_id: coverage}
+            output[ring_type].append(curr_result_record)
 
     except Exception as e:
         logging.error(e, stack_info=True, exc_info=True)
@@ -128,7 +135,17 @@ def run_calculation(input_density_ccp4, input_cycle_pdb, more_or_equal, closest_
     return output
 
 
-def main(root_dir: str, input_dir: str, rings: List[str], more_or_equal: bool, closest_voxel: bool):
+def split_into_subsets(parent_csv_path, root_dir, filename_stem):
+    df = pd.read_csv(parent_csv_path)
+    for ring_type, subdf in df.groupby("Ring"):
+        result_dir = Path(root_dir).resolve() / "validation_data" / ring_type / "el-density-output"
+        result_dir.mkdir(parents=True, exist_ok=True)
+        res_path = result_dir / f"{ring_type}{filename_stem}.csv"
+        subdf.to_csv(res_path, index=False)
+        logging.info(f"[{NAME}]: CSV with results has been created at {res_path}")
+
+
+def main(root_dir: str, input_dir: str, more_or_equal: bool, closest_voxel: bool):
 
     try:
         params = ''
@@ -137,8 +154,8 @@ def main(root_dir: str, input_dir: str, rings: List[str], more_or_equal: bool, c
         if more_or_equal:
             params += "m"
 
-        logging.info(f"[{NAME}]: Rings selected: {rings}")
-        ccp4_dir = Path(input_dir) / "ccp4"
+        rings: Set[str] = {ring.name.lower() for ring in Ring}
+        ccp4_dir = Path(input_dir).resolve() / "ccp4"
         output_path = Path(root_dir).resolve() / "validation_data" / "el-density-output"
         output_path.mkdir(parents=True, exist_ok=True)
 
@@ -149,60 +166,66 @@ def main(root_dir: str, input_dir: str, rings: List[str], more_or_equal: bool, c
         pkl_path = saves_path / f"{filename_stem}.pkl"
         csv_path = output_path / f"{filename_stem}.csv"
 
-        # e.g. {"CVM_4iut_0": "4;6"}
-        processed_data_dict = {}
+        processed_data_dict = {} # "2xyz": { 'benzene': { "ABC_2xyz_0": "3;6", "ABC_2xyz_1": "6;6" }}, oxane: {...}}
         if pkl_path.is_file():
             with pkl_path.open("rb") as f:
                 processed_data_dict = pickle.load(f)
 
         _create_output_folder(output_path)
 
-        filepaths = get_filepaths(Path(root_dir), ccp4_dir, rings)
-        if len(filepaths) == 0:
-            logging.info("No files for analysis were found.")
+        pdb_to_ring_paths_map = map_pdb_to_rings_filepaths(Path(root_dir), ccp4_dir, rings)
+
+        if pdb_to_ring_paths_map is None:
+            logging.info(f"[{NAME}]: No files for analysis were found.")
             return
         
-        files_to_process = []
+        ccp4_filestems_to_process = []
         precomputed_rows = []
-        for f in filepaths:
-            key = f.stem
-            if key in processed_data_dict:
-                precomputed_rows.append((key, *processed_data_dict[key]))
-                continue
-                
-            files_to_process.append(f)
+        for pdb_id in pdb_to_ring_paths_map: # 2xyz -> {.../benzene/filtered_ligands/ABC/patterns/ABC_2xyz_0.pdb, ..., ...}
+            if pdb_id in processed_data_dict:
+                for ring_type, ring_ids in processed_data_dict[pdb_id].items():
+                    for ring_id, coverage in ring_ids.items():
+                        ligand = ring_id.split('_')[0]
+                        precomputed_rows.append((ring_id, ring_type, ligand, coverage))
+            else:    
+                ccp4_filestems_to_process.append(pdb_id)
 
         
-        modified_filepaths = [(f, ccp4_dir, more_or_equal, closest_voxel) for f in files_to_process]
+        modified_filepaths = [(ccp4_dir / f"{filestem}.ccp4.gz",
+                               pdb_to_ring_paths_map[filestem],
+                               more_or_equal,
+                               closest_voxel) for filestem in ccp4_filestems_to_process]
 
         with open(csv_path, mode='w', newline='', buffering=1) as f:
             w = csv.writer(f, delimiter=',', quotechar='"', quoting=csv.QUOTE_MINIMAL)
-            header = ('Id', 'Ring', 'Ligand', 'Covered/Total' )
+            header = ('Id', 'Ring', 'Ligand', 'Covered/Total')
             w.writerow(header)
 
             if len(precomputed_rows) != 0:
                 logging.info(f"[{NAME}]: Writing precomputed data for {len(precomputed_rows)} rings.")
                 w.writerows(precomputed_rows)
-            logging.info(f"[{NAME}]: Done.")
+                logging.info(f"[{NAME}]: Done.")
 
-            if len(files_to_process) == 0:
+            if len(ccp4_filestems_to_process) == 0:
                 logging.info(f"[{NAME}]: No files to process. Computation will not start.")
+                split_into_subsets(csv_path, root_dir, filename_stem)
                 return
 
             logging.info(f"[{NAME}]: Running electron density coverage analysis on CPU count: {CPU_COUNT}")
             with Pool(int(CPU_COUNT)) as p:
-                logging.info(f"[{NAME}]: Starting analysis for {len(files_to_process)} files...")
-                for ring_id, ring_type, ligand, result in p.imap_unordered(run_exe_wrapper, modified_filepaths):
-                    
-                    w.writerow((ring_id, ring_type, ligand, result))
-                    processed_data_dict[ring_id] = (ring_type, ligand, result)
+                logging.info(f"[{NAME}]: Starting analysis for {len(ccp4_filestems_to_process)} ccp4 files...")
+                total = len(modified_filepaths)
+                # List of tuples (ring_id, ring_type, ligand, coverage)
+                for i, result_for_ccp4 in enumerate(p.imap_unordered(run_exe_wrapper, modified_filepaths),1):
+                    logging.info(f"[{NAME}]: {i}/{total} ccp4 files were analysed")
+                    for ring_id, ring_type, ligand, coverage in result_for_ccp4:
+                        w.writerow((ring_id, ring_type, ligand, coverage))
+                        pdb_id = ring_id.split('_')[1]
+                        processed_data_dict.setdefault(pdb_id, {}).setdefault(ring_type, {})[ring_id] = coverage
 
-                logging.info(f"[{NAME}]: Finished analysis for {len(files_to_process)} files.")
+                logging.info(f"[{NAME}]: Finished analysis for {len(ccp4_filestems_to_process)} ccp4 files.")
 
-        df = pd.read_csv(csv_path)
-        for ring_type, subdf in df.groupby("Ring"):
-            result_dir = Path(root_dir).resolve() / "validation_data" / ring_type / "el-density-output"
-            subdf.to_csv(result_dir / f"{ring_type}{filename_stem}.csv", index=False)
+        split_into_subsets(csv_path, root_dir, filename_stem)
 
         with pkl_path.open("wb") as f:
             pickle.dump(processed_data_dict, f)
@@ -218,8 +241,6 @@ if __name__ == '__main__':
                         help='Root directory of the result data (<ROOTDIR>/validation_data/etc)')
     parser.add_argument('input_dir',
                         type=str, help='Directory with input files, containing folder ccp4')
-
-    parser.add_argument("-r", "--rings", nargs="+", type=str, help=f"Choose ring type(s). Currently supported: {[e.name for e in Ring]}")
     
     parser.add_argument('-m', '--more_or_equal',
                         action='store_true', help='Atom is considered to be covered by the electron density when the '
@@ -230,19 +251,8 @@ if __name__ == '__main__':
                                                   'voxel is used')
     
     args = parser.parse_args()
-    if args.rings is None:
-        selected_rings = [r.name.lower() for r in Ring]
-    else:
-        selected_rings = args.rings
-        for ring in selected_rings:
-            if ring.upper() not in Ring.__members__.keys():
-                logging.error(
-                    f"Ring {ring} is not a valid Ring. Currently supported: {[e.name for e in Ring]} Exiting..."
-                )
-                sys.exit(1)
-        selected_rings = [r.lower() for r in selected_rings]
         
     logging.basicConfig(level=logging.INFO,
                         format='%(asctime)s - %(levelname)s - %(message)s',
                         )
-    main(args.rootdir, args.input_dir, selected_rings, args.more_or_equal, args.closest_voxel)
+    main(args.rootdir, args.input_dir, args.more_or_equal, args.closest_voxel)
