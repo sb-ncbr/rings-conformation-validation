@@ -28,7 +28,6 @@ def process_args(args: argparse.Namespace):
     try:
         a = argparse.Namespace()
         a.s = True
-        a.d = False
         a.closest_voxel = False
         a.more_or_equal = False
         if args.closest_voxel:
@@ -197,29 +196,18 @@ def run_calculation(args: argparse.Namespace):
         std = st.pstdev(grid_values)
         sigma_lvl = 1.5 * std
 
-        if args.s:
-            total_atom_count = 0
-            covered_atoms_count = 0
-            for model in str:
-                for chain in model:
-                    for res in chain:
-                        for atom in res:
-                            total_atom_count = total_atom_count + 1
-                            if determine_atom_coverage(atom.pos, map, sigma_lvl, args):
-                                covered_atoms_count = covered_atoms_count + 1
+        total_atom_count = 0
+        covered_atoms_count = 0
+        for model in str:
+            for chain in model:
+                for res in chain:
+                    for atom in res:
+                        total_atom_count = total_atom_count + 1
+                        if determine_atom_coverage(atom.pos, map, sigma_lvl, args):
+                            covered_atoms_count = covered_atoms_count + 1
 
-            output = f'{covered_atoms_count};{total_atom_count}'
+        output = f'{covered_atoms_count};{total_atom_count}'
 
-        if args.d:
-            output = []
-            for model in str:
-                for chain in model:
-                    for res in chain:
-                        for atom in res:
-                            if determine_atom_coverage(atom.pos, map, sigma_lvl, args):
-                                output.append(f'{atom.serial};y;')
-                            else:
-                                output.append(f'{atom.serial};n;')
     except Exception as e:
         logging.error(e, stack_info=True, exc_info=True)
 
