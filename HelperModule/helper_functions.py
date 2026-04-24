@@ -25,11 +25,11 @@ def are_bonds_correct(
     metal_atoms = ["FE", "MN", "CO", "RU", "TI", "ZR", "NI", "CR", "RH", "IR", "RE", "OS"]
 
     if ring is Ring.BENZENE:
-        return (current_ring_df["aromatic"] == "Y").all()
+        return (current_ring_df["aromatic"].str.upper() == "Y").all()
     if ring in (Ring.CYCLOHEXANE, Ring.OXANE, Ring.OXOLANE):
-        return (current_ring_df["value_order"] == "SING").all()
+        return (current_ring_df["value_order"].str.upper() == "SING").all()
     if ring is Ring.CYCLOPENTANE:
-        if not (current_ring_df["value_order"] == "SING").all():
+        if not (current_ring_df["value_order"].str.upper() == "SING").all():
             return False
         metal_bonds = bond_df[
             (
@@ -41,14 +41,6 @@ def are_bonds_correct(
                 & bond_df["type_atom_1"].isin(metal_atoms)
             )
         ]
-
-        # TODO: simplify after debugging/analysis
-        if metal_bonds.empty:
-            return True
-        if len(metal_bonds) > 1:
-            logging.debug(
-                f"More that one metal atom is connected to cyclopentane {filepath}"
-            )
         return len(metal_bonds) != ring.atom_number
 
     return False
