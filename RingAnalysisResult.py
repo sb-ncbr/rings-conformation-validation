@@ -44,10 +44,8 @@ def addElDensity(ring_type, merged_resolution, base_dir):
     path_to_output_file = Path(base_dir) / f"{ring_type}/el-density-output"
     path_to_output_file = path_to_output_file.resolve()
     file2_path = path_to_output_file / f"{ring_type}_params__analysis_output.csv"
-
-    new_headers = ['Entry', 'Atoms in ring']
-    file2 = pd.read_csv(file2_path, delimiter=';', names=new_headers)
-    file2[['Ring_ID', 'Ligand_name', 'Coverage']] = file2['Entry'].str.split(',', expand=True)
+    file2 = pd.read_csv(file2_path, delimiter=',')
+    file2 = file2.rename(columns={'Id': 'Ring_ID'})
     merged_coverage = pd.merge(merged_resolution, file2[['Ring_ID', 'Coverage']],
                                how='left', on=['Ring_ID'])
 

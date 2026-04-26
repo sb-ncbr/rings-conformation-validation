@@ -3,6 +3,7 @@ import logging
 import argparse
 import pickle
 import shutil
+import time
 import pandas as pd
 from typing import List, Set
 from collections import defaultdict
@@ -159,7 +160,7 @@ def main(root_dir: str, input_dir: str, more_or_equal: bool, closest_voxel: bool
         output_path = Path(root_dir).resolve() / "validation_data" / "el-density-output"
         output_path.mkdir(parents=True, exist_ok=True)
 
-        saves_path = Path(input_dir) / "el_density_saves"
+        saves_path = Path("cache") / "el_density_saves"
         saves_path.mkdir(parents=True, exist_ok=True)
 
         filename_stem = f"_params_{params}_analysis_output"
@@ -198,7 +199,7 @@ def main(root_dir: str, input_dir: str, more_or_equal: bool, closest_voxel: bool
 
         with open(csv_path, mode='w', newline='', buffering=1) as f:
             w = csv.writer(f, delimiter=',', quotechar='"', quoting=csv.QUOTE_MINIMAL)
-            header = ('Id', 'Ring', 'Ligand', 'Covered/Total')
+            header = ('Id', 'Ring', 'Ligand', 'Coverage')
             w.writerow(header)
 
             if len(precomputed_rows) != 0:
@@ -217,7 +218,7 @@ def main(root_dir: str, input_dir: str, more_or_equal: bool, closest_voxel: bool
                 total = len(modified_filepaths)
                 # List of tuples (ring_id, ring_type, ligand, coverage)
                 for i, result_for_ccp4 in enumerate(p.imap_unordered(run_exe_wrapper, modified_filepaths),1):
-                    logging.info(f"[{NAME}]: {i}/{total} ccp4 files were analysed")
+                    logging.info(f"[{NAME}]: {i}/{total}")
                     for ring_id, ring_type, ligand, coverage in result_for_ccp4:
                         w.writerow((ring_id, ring_type, ligand, coverage))
                         pdb_id = ring_id.split('_')[1]
@@ -235,6 +236,7 @@ def main(root_dir: str, input_dir: str, more_or_equal: bool, closest_voxel: bool
 
 
 if __name__ == '__main__':
+    start = time.perf_counter()
     parser = argparse.ArgumentParser(description='ED coverage analysis. Output is two numbers: first is the number of '
                                                   'covered atoms, the second is the total number of atoms in a cycle')
     parser.add_argument('rootdir', type=str,
@@ -256,3 +258,4 @@ if __name__ == '__main__':
                         format='%(asctime)s - %(levelname)s - %(message)s',
                         )
     main(args.rootdir, args.input_dir, args.more_or_equal, args.closest_voxel)
+    logging.info(f"[{NAME}]: Total time: {time.perf_counter() - start:.2f}s")
