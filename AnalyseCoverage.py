@@ -1,4 +1,5 @@
 import csv
+from datetime import timedelta
 import logging
 import argparse
 import pickle
@@ -39,17 +40,17 @@ def run_exe(path_to_ccp4file: Path, rings_paths: List[str], more_or_equal: bool,
                         format='%(asctime)s - %(levelname)s - %(message)s',
                         )
     try:
-        # output of run_calculation is in this format: { benzene: [{ABC_2xyz_0: 3;5}, {...}], oxane: {...} }
+        # data["result"] of run_calculation is in this format: { benzene: [{ABC_2xyz_0: 3;5}, {...}], oxane: {...} }
         output = run_calculation(path_to_ccp4file, rings_paths, more_or_equal, closest_voxel)
         results_list = []
-        for ring_type in output:
-            for inner_dict in output[ring_type]:
+        for ring_type, ring_records in output["data"].items():
+            for inner_dict in ring_records:
                 for ring_id, coverage in inner_dict.items():
                     results_list.append((ring_id, ring_type, ring_id.split('_')[0], coverage))
 
     except Exception as e:
         logging.error(e, stack_info=True, exc_info=True)
-    return results_list # List of tuples (ring_id, ring_type, ligand, coverage)
+    return {"data": results_list, "metadata": output["metadata"]} # results: List of tuples (ring_id, ring_type, ligand, coverage)
 
 
 def map_pdb_to_rings_filepaths(rootdir: Path, ccp4_dir: Path, rings: Set[str]):
@@ -99,8 +100,10 @@ def get_intensity(pos, map, closest_voxel):
 
 def run_calculation(input_density_ccp4: Path, rings_paths: List[str], more_or_equal, closest_voxel):
     try:
+        start = time.perf_counter()
         output = defaultdict(list) # { benzene: [{ABC_2xyz_0: 3;5}, {...}], oxane: {...} }
         map = gemmi.read_ccp4_map(str(input_density_ccp4))
+        load_time = time.perf_counter() - start
         map.setup(float('nan'))
 
         # calculate the sigma values
@@ -129,11 +132,18 @@ def run_calculation(input_density_ccp4: Path, rings_paths: List[str], more_or_eq
             ring_id = ring_path.name.split(".")[0]
             curr_result_record = {ring_id: coverage}
             output[ring_type].append(curr_result_record)
+        total_time = time.perf_counter() - start
 
     except Exception as e:
         logging.error(e, stack_info=True, exc_info=True)
 
-    return output
+    return {"data": output,
+            "metadata": {
+                "ccp4_name": input_density_ccp4.stem.removesuffix('.ccp4'),
+                "n_rings": len(rings_paths),
+                "load_time": load_time,
+                "total_time": total_time,
+            }}
 
 
 def split_into_subsets(parent_csv_path, root_dir, filename_stem):
@@ -143,7 +153,7 @@ def split_into_subsets(parent_csv_path, root_dir, filename_stem):
         result_dir.mkdir(parents=True, exist_ok=True)
         res_path = result_dir / f"{ring_type}{filename_stem}.csv"
         subdf.to_csv(res_path, index=False)
-        logging.info(f"[{NAME}]: CSV with results has been created at {res_path}")
+        logging.info(f"[{NAME}]: Exporting to {res_path}")
 
 
 def main(root_dir: str, input_dir: str, more_or_equal: bool, closest_voxel: bool):
@@ -217,9 +227,9 @@ def main(root_dir: str, input_dir: str, more_or_equal: bool, closest_voxel: bool
                 logging.info(f"[{NAME}]: Starting analysis for {len(ccp4_filestems_to_process)} ccp4 files...")
                 total = len(modified_filepaths)
                 # List of tuples (ring_id, ring_type, ligand, coverage)
-                for i, result_for_ccp4 in enumerate(p.imap_unordered(run_exe_wrapper, modified_filepaths),1):
-                    logging.info(f"[{NAME}]: {i}/{total}")
-                    for ring_id, ring_type, ligand, coverage in result_for_ccp4:
+                for i, output in enumerate(p.imap_unordered(run_exe_wrapper, modified_filepaths),1):
+                    logging.info(f"[{NAME}]: {i}/{total} | {output['metadata']['ccp4_name']} | rings: {output['metadata']['n_rings']} | map loading:{output['metadata']['load_time']:.2f}s | total time: {output['metadata']['total_time']:.2f}s")
+                    for ring_id, ring_type, ligand, coverage in output["data"]:
                         w.writerow((ring_id, ring_type, ligand, coverage))
                         pdb_id = ring_id.split('_')[1]
                         processed_data_dict.setdefault(pdb_id, {}).setdefault(ring_type, {})[ring_id] = coverage
@@ -258,4 +268,7 @@ if __name__ == '__main__':
                         format='%(asctime)s - %(levelname)s - %(message)s',
                         )
     main(args.rootdir, args.input_dir, args.more_or_equal, args.closest_voxel)
-    logging.info(f"[{NAME}]: Total time: {time.perf_counter() - start:.2f}s")
+
+    elapsed = time.perf_counter() - start
+    formatted = str(timedelta(seconds=elapsed))
+    logging.info(f"[{NAME}]: Total time: {formatted}")
