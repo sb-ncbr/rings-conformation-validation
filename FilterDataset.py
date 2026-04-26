@@ -86,9 +86,8 @@ def run_filter(
 
 
 def main(ring: str, output_path: str, input_path: str):
-    # TODO: remove debug
     logging.basicConfig(
-        level=logging.DEBUG, format="%(asctime)s - %(levelname)s - %(message)s"
+        level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
     )
 
     ring = ring.upper()
