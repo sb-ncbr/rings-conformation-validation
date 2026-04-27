@@ -2,6 +2,7 @@ import csv
 from datetime import timedelta
 import logging
 import argparse
+import numpy as np
 import pickle
 import shutil
 import time
@@ -9,8 +10,6 @@ import pandas as pd
 from typing import List, Set
 from collections import defaultdict
 import gemmi
-import statistics as st
-import math
 from multiprocessing import Pool, cpu_count
 from pathlib import Path
 from HelperModule.Ring import Ring
@@ -103,18 +102,12 @@ def run_calculation(input_density_ccp4: Path, rings_paths: List[str], more_or_eq
         start = time.perf_counter()
         output = defaultdict(list) # { benzene: [{ABC_2xyz_0: 3;5}, {...}], oxane: {...} }
         map = gemmi.read_ccp4_map(str(input_density_ccp4))
-        load_time = time.perf_counter() - start
         map.setup(float('nan'))
 
-        # calculate the sigma values
-        grid_values = []
-        for point in map.grid:
-            if not math.isnan(point.value):
-                grid_values.append(point.value)
-
-        std = st.pstdev(grid_values)
+        arr = np.array(map.grid, copy=False)
+        arr = arr[~np.isnan(arr)]
+        std = arr.std()
         sigma_lvl = 1.5 * std
-        sigmas_calc_time = time.perf_counter() - start - load_time
 
         for ring_path in rings_paths:
             ring_pdbfile = gemmi.read_pdb(str(Path(ring_path).resolve()))
@@ -142,8 +135,6 @@ def run_calculation(input_density_ccp4: Path, rings_paths: List[str], more_or_eq
             "metadata": {
                 "ccp4_name": input_density_ccp4.stem.removesuffix('.ccp4'),
                 "n_rings": len(rings_paths),
-                "load_time": load_time,
-                "sigma_calc_time": sigmas_calc_time,
                 "total_time": total_time,
             }}
 
@@ -230,7 +221,7 @@ def main(root_dir: str, input_dir: str, more_or_equal: bool, closest_voxel: bool
                 total = len(modified_filepaths)
                 # List of tuples (ring_id, ring_type, ligand, coverage)
                 for i, output in enumerate(p.imap_unordered(run_exe_wrapper, modified_filepaths),1):
-                    logging.info(f"[{NAME}]: {i}/{total} | {output['metadata']['ccp4_name']} | rings: {output['metadata']['n_rings']} | map loading: {output['metadata']['load_time']:.2f}s | sigma calc time: {output['metadata']['sigma_calc_time']:.2f}s | total time: {output['metadata']['total_time']:.2f}s")
+                    logging.info(f"[{NAME}]: {i}/{total} | {output['metadata']['ccp4_name']} | rings: {output['metadata']['n_rings']} | {output['metadata']['total_time']:.2f}s")
                     for ring_id, ring_type, ligand, coverage in output["data"]:
                         w.writerow((ring_id, ring_type, ligand, coverage))
                         pdb_id = ring_id.split('_')[1]
