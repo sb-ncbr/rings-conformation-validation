@@ -150,7 +150,7 @@ def split_into_subsets(parent_csv_path, root_dir, filename_stem):
 
 
 def main(root_dir: str, input_dir: str, more_or_equal: bool, closest_voxel: bool):
-
+    logging.info(f"[{NAME}]: Starting...")
     try:
         params = ''
         if closest_voxel:
@@ -176,7 +176,7 @@ def main(root_dir: str, input_dir: str, more_or_equal: bool, closest_voxel: bool
                 processed_data_dict = pickle.load(f)
 
         _create_output_folder(output_path)
-
+        logging.info(f"[{NAME}]: Scanning the directory with ccp4 files...")
         pdb_to_ring_paths_map = map_pdb_to_rings_filepaths(Path(root_dir), ccp4_dir, rings)
 
         if pdb_to_ring_paths_map is None:

@@ -46,6 +46,7 @@ def addElDensity(ring_type, merged_resolution, base_dir):
     file2_path = path_to_output_file / f"{ring_type}_params__analysis_output.csv"
     file2 = pd.read_csv(file2_path, delimiter=',')
     file2 = file2.rename(columns={'Id': 'Ring_ID'})
+    file2['Coverage'] = file2['Coverage'].str.split(';').str[0]
     merged_coverage = pd.merge(merged_resolution, file2[['Ring_ID', 'Coverage']],
                                how='left', on=['Ring_ID'])
 
