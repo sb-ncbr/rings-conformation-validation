@@ -1,4 +1,5 @@
-from Bio import PDB
+from itertools import islice
+from Bio.PDB import PDBParser, MMCIFIO, NeighborSearch, MMCIFParser, Structure, Model, Chain, Residue, Atom
 import numpy as np
 from glob import glob
 import math
@@ -7,6 +8,69 @@ from pathlib import Path
 from numba import jit
 from scipy.optimize import shgo
 import sys
+from HelperModule.Ring import Ring
+
+HOMOCYCLES = {Ring.CYCLOHEXANE, Ring.CYCLOPENTANE, Ring.BENZENE}
+HETEROCYCLES = {Ring.OXANE, Ring.OXOLANE}
+
+
+def convert_pdb_to_cif(pdbfilepath, ciffilepath):
+    p = PDBParser()
+    struc = p.get_structure("", pdbfilepath)
+    io = MMCIFIO()
+    io.set_structure(struc)
+    io.save(ciffilepath)
+
+
+# only for 5char ligands
+def convert_custom_pdb_to_cif(pdbfilepath: str, ciffilepath: str, atom_count: int):
+    structure = Structure.Structure("")
+    model = Model.Model(0)
+    chain = ""
+    residue = ""
+    with open(pdbfilepath, "r") as f:
+        next(f)
+        for i, line in enumerate(islice(f, atom_count)):
+            if i == 0:
+                residue_name = line[17:22]
+                chain_id = line[22:24]
+                seq_id = line[24:28]
+                ins_code = line[28]
+
+                residue = Residue.Residue(("H_", int(seq_id), ins_code), residue_name, "")
+                chain = Chain.Chain(chain_id)
+
+            x = float(line[32:40])
+            y = float(line[40:48]) 
+            z = float(line[48:56]) 
+            name = line[12:16].strip()
+            fullname = line[12:16]
+            altloc = line[16].strip() or " "
+            serial_number = int(line[6:11])
+            occupancy = float(line[56:62].strip() or 0.0)
+            bfactor = float(line[62:68].strip() or 0.0)
+            element = line[78:80].strip()
+            if not element:
+                element = name[0]
+            
+            atom = Atom.Atom(
+                name=name,
+                coord=np.array([x, y, z]),
+                bfactor=bfactor,
+                occupancy=occupancy,
+                altloc=altloc,
+                fullname=fullname,
+                serial_number=serial_number,
+                element=element
+            )
+            residue.add(atom)
+        chain.add(residue)
+    model.add(chain)
+    structure.add(model)
+    io = MMCIFIO()
+    io.set_structure(structure)
+    io.save(ciffilepath)
+
 
 def cross(a, b):
     return np.array([
@@ -17,7 +81,6 @@ def cross(a, b):
 
 def norm(a):
     return math.sqrt(np.sum(a*a))
-
 
 
 @jit(nopython=True, cache=True, fastmath=True)
@@ -67,7 +130,7 @@ def calculate_HR(coords, N, apply_tr):
 #for rings with no heteroatom 
 #DOI: https://doi.org/10.1186/s13321-026-01154-0
 def calculate_HR_homocycles(atoms):
-    kdtree = PDB.NeighborSearch(atoms)
+    kdtree = NeighborSearch(atoms)
     sorted_atoms = [atoms[0],
                     kdtree.search(center=atoms[0].coord, radius=1.8, level="A")[1]]
     for x in range(1, len(atoms) - 1):
@@ -185,35 +248,39 @@ def calculate_HR_heterocycles(atoms):
 
 
 #main logic
-def calculate_hr_angles_from_pdb(file, cycle_type):
+def calculate_hr_angles_from_cif(file, ring):
     #generalized input handling for ring w and w/o heteroatoms
-    atoms = [atom for atom in PDB.PDBParser(QUIET=True).get_structure("structure", file)[0].get_atoms() if atom.element != "H"]
+    atoms = [atom for atom in MMCIFParser(QUIET=True).get_structure("structure", file)[0].get_atoms() if atom.element != "H"]
     if len(atoms) < 5:
         raise ValueError("Too few atoms to form ring")
 
-    if cycle_type in ["cyclohexane", "benzene", "cyclopentane"]:
+    if ring in HOMOCYCLES:
         return calculate_HR_homocycles(atoms)
-    elif cycle_type in ["oxane", "oxolane"]:
-        return calculate_HR_heterocycles(atoms)
-    else:
-        raise ValueError(f"Unsupported cycle type: {cycle_type}")
+    return calculate_HR_heterocycles(atoms)
 
 
-
-def process_all_ligands(cycle_type, input_dir, output_json):
+def process_all_ligands(ring: Ring, input_dir: str):
     result = {}
     excluded = []
 
-    for file in glob(f"{input_dir}/*/*/*.pdb"):
+    basedir = Path(input_dir) / "validation_data" / ring.name.lower() / "filtered_ligands"
+    for file in glob(f"{basedir}/*/*/*.pdb"):
         try:
-            ligand_id = Path(file).stem
-            hr = calculate_hr_angles_from_pdb(file, cycle_type)
-            result[ligand_id] = hr
+            ring_id = Path(file).stem
+            ligand_id = ring_id.split('_')[0]
+            ciffile = str(Path(file).with_suffix('.cif'))
+            if len(ligand_id) == 5:
+                convert_custom_pdb_to_cif(file, ciffile, ring.atom_number)
+            else:
+                convert_pdb_to_cif(file, ciffile)
+            hr = calculate_hr_angles_from_cif(ciffile, ring)
+            result[ring_id] = hr
         except Exception as e:
             excluded.append({"file": file, "reason": str(e)})
 
-    Path(output_json).parent.mkdir(parents=True, exist_ok=True)
-    with open(output_json, "w") as f:
+    outputpath = Path(input_dir) / "validation_data" / ring.name.lower() / "hr_analysis_output"
+    Path(outputpath).mkdir(parents=True, exist_ok=True)
+    with open(outputpath / "output_HR.json", "w") as f:
         json.dump(result, f, indent=4)
 
     print(f"HR angle extraction complete. {len(result)} succeeded, {len(excluded)} failed.")
@@ -224,13 +291,10 @@ def process_all_ligands(cycle_type, input_dir, output_json):
 
 if __name__ == "__main__":
     import sys
-    #ring type must be specified as "ring type" in the first argument 
-    if len(sys.argv) != 4:
-        print("Usage: python CalculateHR.py \"ring_type\" <filtered_ligands_path> <output.json>")
+    if len(sys.argv) != 2:
+        print("Usage: python CalculateHR.py <workflow_output_path> containing validation_data folder")
         exit(1)
+    input_dir = sys.argv[1]
 
-    cycle_type = sys.argv[1]
-    input_dir = sys.argv[2]
-    output_json = sys.argv[3]
-
-    process_all_ligands(cycle_type, input_dir, output_json)
+    for ring in Ring:
+        process_all_ligands(ring, input_dir)

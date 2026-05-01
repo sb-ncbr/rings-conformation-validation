@@ -29,7 +29,7 @@ INPUT_DATA_FOLDER="$1"
 OUTPUT_FOLDER="$2"
 
 # Download of data
-# None: $INPUT_DATA_FOLDER should be created before running this script
+# Note: $INPUT_DATA_FOLDER should be created before running this script
 python3 DownloadData.py -j 4 -d "$INPUT_DATA_FOLDER" $ONEDATA_ID
 exit_code=$?
 if [ $exit_code -ne 0 ]; then
@@ -45,52 +45,15 @@ if [ $exit_code -ne 0 ]; then
     exit $exit_code
 fi
 
-# Identify conformation of cyclohexane cycles
 python3 FilterDataset.py -i "$INPUT_DATA_FOLDER/${DATA_FOLDER}" -o "$OUTPUT_FOLDER"
 exit_code=$?
 if [ $exit_code -ne 0 ]; then
     echo "Error: FilterDataset failed with exit code $exit_code"
     exit $exit_code
 fi
-FILTERED_LIGANDS_PATH="$OUTPUT_FOLDER/validation_data/cyclohexane/filtered_ligands"
-CC_OUTPUT_PATH="$OUTPUT_FOLDER/validation_data/cyclohexane/output"
-mkdir "$CC_OUTPUT_PATH"
-python3 CalculateHR.py "cyclohexane" "$FILTERED_LIGANDS_PATH" "$CC_OUTPUT_PATH/output_HR.json"
-python3 CompareHR.py  "cyclohexane" "$CC_OUTPUT_PATH/output_HR.json" "$CC_OUTPUT_PATH/result_conf_chart.csv"
 
-# Identify conformation of cyclopentane cycles
-
-FILTERED_LIGANDS_PATH="$OUTPUT_FOLDER/validation_data/cyclopentane/filtered_ligands"
-CC_OUTPUT_PATH="$OUTPUT_FOLDER/validation_data/cyclopentane/output"
-mkdir "$CC_OUTPUT_PATH"
-python3 CalculateHR.py "cyclopentane" "$FILTERED_LIGANDS_PATH" "$CC_OUTPUT_PATH/output_HR.json"
-python3 CompareHR.py  "cyclopentane" "$CC_OUTPUT_PATH/output_HR.json" "$CC_OUTPUT_PATH/result_conf_chart.csv"
-
-# Identify conformation of benzene cycles
-
-FILTERED_LIGANDS_PATH="$OUTPUT_FOLDER/validation_data/benzene/filtered_ligands"
-CC_OUTPUT_PATH="$OUTPUT_FOLDER/validation_data/benzene/output"
-mkdir "$CC_OUTPUT_PATH"
-python3 CalculateHR.py "benzene" "$FILTERED_LIGANDS_PATH" "$CC_OUTPUT_PATH/output_HR.json"
-python3 CompareHR.py  "benzene" "$CC_OUTPUT_PATH/output_HR.json" "$CC_OUTPUT_PATH/result_conf_chart.csv"
-
-# Identify conformation of oxane cycles
-
-FILTERED_LIGANDS_PATH="$OUTPUT_FOLDER/validation_data/oxane/filtered_ligands"
-CC_OUTPUT_PATH="$OUTPUT_FOLDER/validation_data/oxane/output"
-mkdir "$CC_OUTPUT_PATH"
-python3 CalculateHR.py "oxane" "$FILTERED_LIGANDS_PATH" "$CC_OUTPUT_PATH/output_HR.json"
-python3 CompareHR.py  "oxane" "$CC_OUTPUT_PATH/output_HR.json" "$CC_OUTPUT_PATH/result_conf_chart.csv"
-
-
-# Identify conformation of oxolane cycles
-
-FILTERED_LIGANDS_PATH="$OUTPUT_FOLDER/validation_data/oxolane/filtered_ligands"
-CC_OUTPUT_PATH="$OUTPUT_FOLDER/validation_data/oxolane/output"
-mkdir "$CC_OUTPUT_PATH"
-python3 CalculateHR.py "oxolane" "$FILTERED_LIGANDS_PATH" "$CC_OUTPUT_PATH/output_HR.json"
-python3 CompareHR.py  "oxolane" "$CC_OUTPUT_PATH/output_HR.json" "$CC_OUTPUT_PATH/result_conf_chart.csv"
-
+python3 CalculateHR.py "$OUTPUT_FOLDER"
+python3 CompareHR.py "$OUTPUT_FOLDER"
 
 # analyse electron density coverage
 python3 AnalyseCoverage.py "$OUTPUT_FOLDER" "${INPUT_DATA_FOLDER}/${DATA_FOLDER}/ccp4"

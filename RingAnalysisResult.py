@@ -1,5 +1,4 @@
 import logging
-import shutil
 from pathlib import Path
 import pandas as pd
 import argparse
@@ -8,7 +7,7 @@ import os
 #we don't have RMSD, so changed for HR distance csv
 def read_conf(ring_type, base_dir):
     filename = "result_conf_chart.csv"
-    file_path = os.path.join(base_dir, f'{ring_type}', "output", filename)
+    file_path = os.path.join(base_dir, f'{ring_type}', "hr_analysis_output", filename)
     conf_data = pd.read_csv(file_path, delimiter=';', header=0)
     conf_data = conf_data.dropna(axis=1)
 
