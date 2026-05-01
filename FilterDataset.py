@@ -1,5 +1,7 @@
+from collections import defaultdict
 import logging
 import os
+import re
 import sys
 import shutil
 import time
@@ -15,7 +17,7 @@ from HelperModule.Ring import Ring
 from HelperModule.getter_functions import (
     get_data_from_cif
 )
-from HelperModule.helper_functions import are_bonds_correct
+from HelperModule.helper_functions import classify_ring
 from HelperModule.constants import MAIN_DIR, DEFAULT_DICT_NAME
 
 
@@ -110,12 +112,16 @@ def get_atom_names(cif_file):
     return atom_names
 
 
+def get_atoms_count_from_shape(s: str) -> int:
+    return sum(map(int, re.findall(r"\*(\d+)", s)))
+
+
 def filter_by_bond_type(
-    patterns_df, dir_with_patterns: Path, ring: Ring, output_dir: Path, document: gemmi.cif.Document
+    patterns_df, dir_with_patterns: Path, atoms_shape: str, main_workflow_output_dir: Path, document: gemmi.cif.Document
 ) -> None:
     processed_data_dict = {}
-    target_count = 0
-    target_ring_rows = []
+    target_ring_rows = defaultdict(list)
+    atoms_number = get_atoms_count_from_shape(atoms_shape)
 
     for row in patterns_df.itertuples(index=False):
         ligand = row.Residues.split()[0]
@@ -123,7 +129,7 @@ def filter_by_bond_type(
         pdb_filepath = dir_with_patterns / "patterns" / (row.Id + ".pdb")
         cif_filepath = pdb_filepath.with_suffix('.cif')
         if pdb_filepath.exists():
-            convert_to_cif(ligand, pdb_filepath, cif_filepath, ring.atom_number)
+            convert_to_cif(ligand, pdb_filepath, cif_filepath, atoms_number)
 
         atom_names = get_atom_names(cif_filepath)
 
@@ -131,12 +137,13 @@ def filter_by_bond_type(
 
         if key in processed_data_dict:
             # skipping because already filtered out this ring as wrong
-            if not processed_data_dict[key]:
+            if processed_data_dict[key] is None:
                 continue
-
+            
+            ring_name = processed_data_dict[key].name.lower()
+            output_dir = main_workflow_output_dir / ring_name
             process_correct_rings(output_dir, ligand, cif_filepath)
-            target_ring_rows.append(row._asdict())
-            target_count += 1
+            target_ring_rows[ring_name].append(row._asdict())
             continue
 
         ligand_block = document.find_block(ligand)
@@ -145,20 +152,20 @@ def filter_by_bond_type(
             continue
 
         bond_df, atom_df = get_data_from_cif(ligand_block)
-        is_correct = are_bonds_correct(
-            atom_names, bond_df, atom_df, ring, cif_filepath, ligand
+        determined_ring_type = classify_ring(
+            atoms_shape, atom_names, bond_df, atom_df, cif_filepath, ligand
         )
-        processed_data_dict[key] = is_correct
+        processed_data_dict[key] = determined_ring_type
 
-        if is_correct:
-            process_correct_rings(output_dir, ligand, cif_filepath)
-            target_ring_rows.append(row._asdict())
-            target_count += 1
+        if determined_ring_type is None:
+            continue
+        
+        ring_name = determined_ring_type.name.lower()
+        output_dir = main_workflow_output_dir / ring_name
+        process_correct_rings(output_dir, ligand, cif_filepath)
+        target_ring_rows[ring_name].append(row._asdict())
 
-
-    res_df = pd.DataFrame(target_ring_rows)
-    res_df.to_csv(output_dir / f"filtered_patterns_{ring.name.lower()}.csv")
-    return res_df
+    return target_ring_rows
 
 
 def main(output_path: str, input_path: str):
@@ -220,26 +227,34 @@ def main(output_path: str, input_path: str):
 
     grouped = dict(tuple(df.groupby("Atoms")))
 
-    dfs_by_ring = {atom: grouped[atom].copy() for atom in target_atoms if atom in grouped}
+    dfs_by_ring_structure = {atom: grouped[atom].copy() for atom in target_atoms if atom in grouped}
 
     logging.info("Reading components dictionary...")
     document = gemmi.cif.read(str(path_to_comp_dict))
-
+    result_dict = {}
+    atoms_shape_groups = set()
     for ring in Ring:
-        logging.info(f"Processing {ring.name.lower()}...")
+        atoms_shape_groups.add(ring.atoms)
         output_path = main_workflow_output_dir / ring.name.lower()
         output_path.mkdir(parents=True, exist_ok=True)
 
-        df = filter_by_bond_type(
-            dfs_by_ring[ring.atoms],
+    for atoms_shape in atoms_shape_groups:
+        logging.info(f"Processing ring(s) with {atoms_shape} shape...")
+        
+        target_ring_rows = filter_by_bond_type(
+            dfs_by_ring_structure[atoms_shape],
             dir_with_patterns,
-            ring,
-            output_path,
+            atoms_shape,
+            main_workflow_output_dir,
             document
         )
+        result_dict |= target_ring_rows
 
-        logging.info(f"{ring.name} | Rings={len(df)} | Unique ligands={df["Signature"].nunique()} | Unique PDBs={df["ParentId"].nunique()}")
-
+    for ring_name, rows in result_dict.items():
+        res_df = pd.DataFrame(rows)
+        res_df.to_csv(main_workflow_output_dir / ring_name / f"filtered_patterns_{ring_name}.csv")
+        logging.info(f"{ring_name} | Rings={len(res_df)} | Unique ligands={res_df["Signature"].nunique()} | Unique PDBs={res_df["ParentId"].nunique()}")
+        
     logging.info("FilterDataset has completed successfully.")
 
 

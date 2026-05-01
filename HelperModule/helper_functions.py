@@ -8,9 +8,99 @@ from gemmi import cif
 from HelperModule.Ring import Ring
 
 
-def are_bonds_correct(
-    atom_names: Set[str], bond_df, atom_df, ring: Ring, filepath, ligand
-):
+def is_oxane(current_ring_df, all_single, filepath):
+    if not all_single:
+        return False
+    
+    aromatic_count = (current_ring_df["aromatic"].str.upper() == "Y").sum()
+    if aromatic_count > 0:
+        logging.warning(f"[INCONSISTEND LABELLING oxane]: Skipping a ring with all bonds labelled as single AND at {aromatic_count} bond(s) labelled as aromatic: {filepath}")
+        return False
+    return True
+
+
+def is_oxolane(current_ring_df, all_single, filepath):
+    if not all_single:
+        return False
+    
+    aromatic_count = (current_ring_df["aromatic"].str.upper() == "Y").sum()
+    if aromatic_count > 0:
+        logging.warning(f"[INCONSISTEND LABELLING oxolane]: Skipping a ring with all bonds labelled as single AND {aromatic_count} bond(s) labelled as aromatic: {filepath}")
+        return False
+    return True
+
+
+def is_cyclopentane(current_ring_df, bond_df, atom_names, metal_atoms, all_single, filepath):
+    if not all_single:
+        return False
+    
+    aromatic_count = (current_ring_df["aromatic"].str.upper() == "Y").sum()
+    if aromatic_count > 0:
+        logging.warning(f"[INCONSISTEND LABELLING cyclopentane]: Skipping a ring with all bonds labelled as single AND {aromatic_count} bond(s) labelled as aromatic: {filepath}")
+        return False
+
+    metal_bonds = bond_df[
+        (
+            bond_df["atom_id_1"].isin(atom_names)
+            & bond_df["type_atom_2"].isin(metal_atoms)
+        )
+        | (
+            bond_df["atom_id_2"].isin(atom_names)
+            & bond_df["type_atom_1"].isin(metal_atoms)
+        )
+    ]
+    return len(metal_bonds) != Ring.CYCLOPENTANE.atom_number
+
+
+def is_cyclohexane(current_ring_df, all_single, filepath):
+    if not all_single:
+        return False
+    
+    aromatic_count = (current_ring_df["aromatic"].str.upper() == "Y").sum()
+    # condition <aromatic_count> == 6 is checked in is_benzene function
+    if 0 < aromatic_count < 6:
+        logging.warning(f"[INCONSISTEND LABELLING cyclohexane]: Skipping a ring with all bonds labelled as single AND {aromatic_count} bond(s) labelled as aromatic: {filepath}")
+        return False
+    # double check
+    if aromatic_count == 0:
+        return True
+
+
+def is_benzene(current_ring_df, all_single, filepath):
+    double_bonds_count = (current_ring_df["value_order"].str.upper() == "DOUB").sum()
+
+    if (current_ring_df["aromatic"].str.upper() == "Y").all():
+        if all_single:
+            logging.warning(f"[INCONSISTEND LABELLING benzene]: Skipping a ring with all bonds labelled as aromatic AND single: {filepath}")
+            return False
+        
+        if double_bonds_count == 3:
+            logging.info(f"Benzene | {filepath} has THREE bonds labelled as double and all aromatic")
+        elif double_bonds_count == 2:
+            logging.info(f"Benzene | {filepath} has TWO bonds labelled as double and all aromatic")
+        else:
+            logging.warning(f"[FOR INVESTIGATION benzene]: Skipping a ring with {double_bonds_count} bonds labelled as double and all aromatic: {filepath}")
+            return False
+    
+        return True
+    
+    if (current_ring_df["aromatic"].str.upper() == "N").all():
+        
+        if double_bonds_count == 3:
+            logging.info(f"Possible Benzene included | {filepath} has THREE bonds labelled as double BUT all bonds as NOT aromatic")
+            return True
+        
+    if (~current_ring_df["aromatic"].str.upper().isin(["N", "Y"])).all():
+        if double_bonds_count == 3:
+            logging.info(f"Possible Benzene included | {filepath} has THREE bonds labelled as double BUT all bonds are WITHOUT or INVALID aromatic flag")
+            return True
+
+    return False
+    
+
+def classify_ring(
+    atoms_shape: str, atom_names: Set[str], bond_df, atom_df, filepath, ligand
+) -> Ring | None:
     atom_map = atom_df.set_index("atom_id")["type_symbol"]
 
     bond_df["type_atom_1"] = bond_df["atom_id_1"].map(atom_map)
@@ -21,29 +111,29 @@ def are_bonds_correct(
 
     mask = bond_df["atom_id_1"].isin(atom_names) & bond_df["atom_id_2"].isin(atom_names)
     current_ring_df = bond_df[mask]
-
-    metal_atoms = ["FE", "MN", "CO", "RU", "TI", "ZR", "NI", "CR", "RH", "IR", "RE", "OS"]
-
-    if ring is Ring.BENZENE:
-        return (current_ring_df["aromatic"].str.upper() == "Y").all()
-    if ring in (Ring.CYCLOHEXANE, Ring.OXANE, Ring.OXOLANE):
-        return (current_ring_df["value_order"].str.upper() == "SING").all()
-    if ring is Ring.CYCLOPENTANE:
-        if not (current_ring_df["value_order"].str.upper() == "SING").all():
-            return False
-        metal_bonds = bond_df[
-            (
-                bond_df["atom_id_1"].isin(atom_names)
-                & bond_df["type_atom_2"].isin(metal_atoms)
-            )
-            | (
-                bond_df["atom_id_2"].isin(atom_names)
-                & bond_df["type_atom_1"].isin(metal_atoms)
-            )
-        ]
-        return len(metal_bonds) != ring.atom_number
-
-    return False
+    all_single = (current_ring_df["value_order"].str.upper() == "SING").all()
+    match atoms_shape:
+        case "C*6":
+            if is_benzene(current_ring_df, all_single, filepath):
+                return Ring.BENZENE
+            if is_cyclohexane(current_ring_df, all_single, filepath):
+                return Ring.CYCLOHEXANE
+            return None
+        case "C*5":
+            metal_atoms = ["FE", "MN", "CO", "RU", "TI", "ZR", "NI", "CR", "RH", "IR", "RE", "OS"]
+            if is_cyclopentane(current_ring_df, bond_df, atom_names, metal_atoms, all_single, filepath):
+                return Ring.CYCLOPENTANE
+            return None
+        case "C*5-O*1":
+            if is_oxane(current_ring_df, all_single, filepath):
+                return Ring.OXANE
+            return None
+        case "C*4-O*1":
+            if is_oxolane(current_ring_df, all_single, filepath):
+                return Ring.OXOLANE
+            return None
+        case _:
+            return None
 
 
 def unzip_file(src: Path, dst: Path) -> None:
@@ -64,7 +154,7 @@ def is_mono_installed():
         mono_executable = os.path.join(path, "mono")
         if os.path.exists(mono_executable):
             return True
-    logging.error(f"The Mono package is not installed.")
+    logging.error("The Mono package is not installed.")
     return False
 
 
