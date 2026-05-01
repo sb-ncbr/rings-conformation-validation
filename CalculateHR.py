@@ -1,5 +1,4 @@
-from itertools import islice
-from Bio.PDB import PDBParser, MMCIFIO, NeighborSearch, MMCIFParser, Structure, Model, Chain, Residue, Atom
+from Bio.PDB import NeighborSearch, MMCIFParser
 import numpy as np
 from glob import glob
 import math
@@ -9,67 +8,10 @@ from numba import jit
 from scipy.optimize import shgo
 import sys
 from HelperModule.Ring import Ring
+from HelperModule.constants import MAIN_DIR
 
 HOMOCYCLES = {Ring.CYCLOHEXANE, Ring.CYCLOPENTANE, Ring.BENZENE}
 HETEROCYCLES = {Ring.OXANE, Ring.OXOLANE}
-
-
-def convert_pdb_to_cif(pdbfilepath, ciffilepath):
-    p = PDBParser()
-    struc = p.get_structure("", pdbfilepath)
-    io = MMCIFIO()
-    io.set_structure(struc)
-    io.save(ciffilepath)
-
-
-# only for 5char ligands
-def convert_custom_pdb_to_cif(pdbfilepath: str, ciffilepath: str, atom_count: int):
-    structure = Structure.Structure("")
-    model = Model.Model(0)
-    chain = ""
-    residue = ""
-    with open(pdbfilepath, "r") as f:
-        next(f)
-        for i, line in enumerate(islice(f, atom_count)):
-            if i == 0:
-                residue_name = line[17:22]
-                chain_id = line[22:24]
-                seq_id = line[24:28]
-                ins_code = line[28]
-
-                residue = Residue.Residue(("H_", int(seq_id), ins_code), residue_name, "")
-                chain = Chain.Chain(chain_id)
-
-            x = float(line[32:40])
-            y = float(line[40:48]) 
-            z = float(line[48:56]) 
-            name = line[12:16].strip()
-            fullname = line[12:16]
-            altloc = line[16].strip() or " "
-            serial_number = int(line[6:11])
-            occupancy = float(line[56:62].strip() or 0.0)
-            bfactor = float(line[62:68].strip() or 0.0)
-            element = line[78:80].strip()
-            if not element:
-                element = name[0]
-            
-            atom = Atom.Atom(
-                name=name,
-                coord=np.array([x, y, z]),
-                bfactor=bfactor,
-                occupancy=occupancy,
-                altloc=altloc,
-                fullname=fullname,
-                serial_number=serial_number,
-                element=element
-            )
-            residue.add(atom)
-        chain.add(residue)
-    model.add(chain)
-    structure.add(model)
-    io = MMCIFIO()
-    io.set_structure(structure)
-    io.save(ciffilepath)
 
 
 def cross(a, b):
@@ -177,8 +119,6 @@ def calculate_HR_homocycles(atoms):
     return calculate_HR(coords, len(sorted_atoms), apply_tr=True)
 
 
-
-
 #Ordering atoms starting with heteroatom
 def order_ring_by_heteroatom(atoms, hetero_targets):
     if isinstance(hetero_targets, str):
@@ -221,8 +161,6 @@ def order_ring_by_heteroatom(atoms, hetero_targets):
         ring.append(nxt)
         prev, curr = curr, nxt
 
-
-
     return ring
 
 
@@ -246,7 +184,6 @@ def calculate_HR_heterocycles(atoms):
     return calculate_HR(xs, N, apply_tr=False)
 
 
-
 #main logic
 def calculate_hr_angles_from_cif(file, ring):
     #generalized input handling for ring w and w/o heteroatoms
@@ -263,22 +200,16 @@ def process_all_ligands(ring: Ring, input_dir: str):
     result = {}
     excluded = []
 
-    basedir = Path(input_dir) / "validation_data" / ring.name.lower() / "filtered_ligands"
-    for file in glob(f"{basedir}/*/*/*.pdb"):
+    basedir = Path(input_dir) / MAIN_DIR/ ring.name.lower() / "filtered_ligands"
+    for file in glob(f"{basedir}/*/*/*.cif"):
         try:
             ring_id = Path(file).stem
-            ligand_id = ring_id.split('_')[0]
-            ciffile = str(Path(file).with_suffix('.cif'))
-            if len(ligand_id) == 5:
-                convert_custom_pdb_to_cif(file, ciffile, ring.atom_number)
-            else:
-                convert_pdb_to_cif(file, ciffile)
-            hr = calculate_hr_angles_from_cif(ciffile, ring)
+            hr = calculate_hr_angles_from_cif(file, ring)
             result[ring_id] = hr
         except Exception as e:
             excluded.append({"file": file, "reason": str(e)})
 
-    outputpath = Path(input_dir) / "validation_data" / ring.name.lower() / "hr_analysis_output"
+    outputpath = Path(input_dir) / MAIN_DIR / ring.name.lower() / "hr_analysis_output"
     Path(outputpath).mkdir(parents=True, exist_ok=True)
     with open(outputpath / "output_HR.json", "w") as f:
         json.dump(result, f, indent=4)

@@ -3,6 +3,7 @@ import math
 from pathlib import Path
 import json
 from HelperModule.Ring import Ring
+from HelperModule.constants import MAIN_DIR
 
 SIX_MEMBERED_RINGS = {Ring.CYCLOHEXANE, Ring.BENZENE, Ring.OXANE}
 FIVE_MEMBERED_RINGS = (Ring.CYCLOPENTANE, Ring.OXOLANE)
@@ -45,7 +46,7 @@ def main(input_dir):
             standard_HRs = json.load(f)
 
         #Load all ligand HR data
-        hr_analysis_output = Path(input_dir) / "validation_data" / ring.name.lower() / "hr_analysis_output"
+        hr_analysis_output = Path(input_dir) / MAIN_DIR / ring.name.lower() / "hr_analysis_output"
         with open(hr_analysis_output / "output_HR.json") as f:
             rings_hr = json.load(f)
 

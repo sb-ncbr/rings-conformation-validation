@@ -1,11 +1,9 @@
 import csv
 from datetime import timedelta
-from itertools import islice
 import logging
 import argparse
 import numpy as np
 import pickle
-import shutil
 import time
 import pandas as pd
 from typing import List, Set
@@ -14,6 +12,7 @@ import gemmi
 from multiprocessing import Pool, cpu_count
 from pathlib import Path
 from HelperModule.Ring import Ring
+from HelperModule.constants import EL_DENSITY_OUTPUT_DIR, MAIN_DIR
 
 CPU_COUNT = cpu_count()
 NAME = "Ring Coverage"
@@ -49,14 +48,14 @@ def map_pdb_to_rings_filepaths(rootdir: Path, ccp4_dir: Path, rings: Set[str]):
 
         if len(pdb_ids_for_which_ccp4_is_available) == 0:
             return None
-        base = Path(rootdir) / "validation_data"
+        base = Path(rootdir) / MAIN_DIR
         for ring_type in rings:
             for f in (base / ring_type / "filtered_ligands").rglob("*"):
                 if f.is_file():
                     pdb_id = f.stem.split('_')[1]
                     if pdb_id in pdb_ids_for_which_ccp4_is_available:
                         res[pdb_id].add(f)
-        logging.info(f"[{NAME}]: There are {len(res)} pdb structures and {sum(len(v) for v in res.values())} rings with corresponding CCP4 file "
+        logging.info(f"[{NAME}]: There are {len(res)} structures and {sum(len(v) for v in res.values())} rings with corresponding CCP4 file "
                      f"available.")
 
     except Exception as e:
@@ -84,37 +83,21 @@ def get_intensity(pos, map, closest_voxel):
         logging.error(e, stack_info=True, exc_info=True)
 
 
-# only of pdb files with 5chars ligand name, coords are shifted 2 columns to the right
-def get_coverage_from_nonstd_pdb(dens_map, file_path, atom_count, sigma_lvl, more_or_equal, closest_voxel):
-    covered_atoms_count = 0
-    with open(file_path, "r") as f:
-        next(f)
-        lines = list(islice(f, atom_count))
-        
-        for line in lines:
-            x = float(line[32:40])  # 31+2 to 38+2
-            y = float(line[40:48])  # 39+2 to 46+2
-            z = float(line[48:56])  # 47+2 to 54+2
- 
-            pos = gemmi.Position(x, y, z)
-            if determine_atom_coverage(pos, dens_map, sigma_lvl, more_or_equal, closest_voxel):
-                covered_atoms_count += 1
-                            
-    return covered_atoms_count, atom_count
-
-
-def get_coverage_using_gemmi(dens_map, ring_path: Path, input_density_ccp4: Path, sigma_lvl, more_or_equal, closest_voxel):
+def get_coverage(dens_map, ring_path: Path, input_density_ccp4: Path, sigma_lvl, more_or_equal, closest_voxel):
     # we process only one ring in pdb format, so there is only one model, one chain and one residue
-    ring_pdbfile = gemmi.read_pdb(str(ring_path.resolve()))
-    model = ring_pdbfile[0]
+    ring_structure = gemmi.read_structure(str(ring_path.resolve()))
+    model = ring_structure[0]
     chain = model[0]
     res = chain[0]
+
     covered_atoms_count = 0
     total_atom_count = 0
+
     for atom in res:
         total_atom_count += 1
         if determine_atom_coverage(atom.pos, dens_map, sigma_lvl, more_or_equal, closest_voxel):
             covered_atoms_count += 1
+
     return covered_atoms_count, total_atom_count
 
 
@@ -133,19 +116,11 @@ def run_calculation(input_density_ccp4: Path, rings_paths: List[Path], more_or_e
         for ring_path in rings_paths:
             
             ring_type = ring_path.parents[3].name
-            atom_count = Ring[ring_type.upper()].atom_number
-
-            ligand = ring_path.parents[1].name
-            if len(ligand) == 5:
-                covered_atoms_count, total_atom_count = get_coverage_from_nonstd_pdb(dens_map, ring_path,
-                                                                                     atom_count, sigma_lvl,
-                                                                                     more_or_equal, closest_voxel)
-            else:
-                covered_atoms_count, total_atom_count = get_coverage_using_gemmi(dens_map, ring_path,
-                                                                                 input_density_ccp4,
-                                                                                 sigma_lvl,
-                                                                                 more_or_equal,
-                                                                                 closest_voxel)
+            covered_atoms_count, total_atom_count = get_coverage(dens_map, ring_path,
+                                                                 input_density_ccp4,
+                                                                 sigma_lvl,
+                                                                 more_or_equal,
+                                                                 closest_voxel)
 
             coverage = f'{covered_atoms_count};{total_atom_count}'
             ring_id = ring_path.name.split(".")[0]
@@ -167,7 +142,7 @@ def run_calculation(input_density_ccp4: Path, rings_paths: List[Path], more_or_e
 def split_into_subsets(parent_csv_path, root_dir, filename_stem):
     df = pd.read_csv(parent_csv_path)
     for ring_type, subdf in df.groupby("Ring"):
-        result_dir = Path(root_dir).resolve() / "validation_data" / ring_type / "el-density-output"
+        result_dir = Path(root_dir).resolve() / MAIN_DIR / ring_type / EL_DENSITY_OUTPUT_DIR
         result_dir.mkdir(parents=True, exist_ok=True)
         res_path = result_dir / f"{ring_type}{filename_stem}.csv"
         subdf.to_csv(res_path, index=False)
@@ -184,7 +159,7 @@ def main(root_dir: str, inputdir: str, more_or_equal: bool, closest_voxel: bool)
             params += "m"
 
         rings: Set[str] = {ring.name.lower() for ring in Ring}
-        output_path = Path(root_dir).resolve() / "validation_data" / "el-density-output"
+        output_path = Path(root_dir).resolve() / MAIN_DIR / EL_DENSITY_OUTPUT_DIR
         output_path.mkdir(parents=True, exist_ok=True)
         ccp4_dir = Path(inputdir).resolve()
         saves_path = Path("cache") / "el_density_saves"

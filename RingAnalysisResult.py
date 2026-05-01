@@ -4,6 +4,8 @@ import pandas as pd
 import argparse
 import os
 
+from HelperModule.constants import EL_DENSITY_OUTPUT_DIR, MAIN_DIR
+
 #we don't have RMSD, so changed for HR distance csv
 def read_conf(ring_type, base_dir):
     filename = "result_conf_chart.csv"
@@ -40,7 +42,7 @@ def addResolution(data_dir, ring_type, conf_data):
 
 
 def addElDensity(ring_type, merged_resolution, base_dir):
-    path_to_output_file = Path(base_dir) / f"{ring_type}/el-density-output"
+    path_to_output_file = Path(base_dir) / ring_type / EL_DENSITY_OUTPUT_DIR
     path_to_output_file = path_to_output_file.resolve()
     file2_path = path_to_output_file / f"{ring_type}_params__analysis_output.csv"
     file2 = pd.read_csv(file2_path, delimiter=',')
@@ -142,7 +144,7 @@ if __name__ == '__main__':
                         format='%(asctime)s - %(levelname)s - %(message)s',
                         )
     logging.info(f"[{args.ring.capitalize()}]: Starting RingAnalysisResult...")
-    base_dir = os.path.join(args.output, "validation_data")
+    base_dir = os.path.join(args.output, MAIN_DIR)
 
     # Call read_conf with the specified ring type
     conf_result = read_conf(args.ring, base_dir)

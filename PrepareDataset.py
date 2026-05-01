@@ -1,16 +1,20 @@
-import re
-from argparse import ArgumentParser
-from HelperModule.helper_functions import (unzip_file, is_mono_installed,
-                                           is_valid_directory, file_exists)
-from HelperModule.constants import *
-import logging
-from multiprocessing import cpu_count
 import json
+import logging
 import subprocess
 import os
 import sys
+import re
+from argparse import ArgumentParser
+from pathlib import Path
+from multiprocessing import cpu_count
+from HelperModule.helper_functions import (unzip_file, is_mono_installed,
+                                           is_valid_directory, file_exists)
+from HelperModule.constants import DEFAULT_DICT_NAME, MAIN_DIR
 
 CPU_COUNT = cpu_count()
+PQ_CONFIG = "config.json"
+PDB_DIR = "pdb_copy_local"
+PQ_CMD = Path("PatternQuery_1.1.25.8.19") / "WebChemistry.Queries.Service.exe"
 
 
 def create_config_for_pq(path_to_main_output: Path, path_to_pdb_local: str) -> None:
@@ -66,7 +70,7 @@ def prerequisites_are_met(input_dir: str, output_dir: str) -> bool:
     # if not is_valid_directory(input_path / CCP4_DIR):
     #     return False
 
-    if not is_valid_directory(input_path / PDB):
+    if not is_valid_directory(input_path / PDB_DIR):
         return False
 
     if not file_exists(input_path / DEFAULT_DICT_NAME):
@@ -139,7 +143,7 @@ def main(input_path: str, output_path: str):
     #TODO
     # preprocess_data(Path(input_path).resolve())
 
-    path_to_local_pdb = Path(input_path).resolve() / PDB
+    path_to_local_pdb = Path(input_path).resolve() / PDB_DIR
     main_workflow_output_dir = Path(output_path).resolve() / MAIN_DIR
 
     create_config_for_pq(main_workflow_output_dir, str(path_to_local_pdb))

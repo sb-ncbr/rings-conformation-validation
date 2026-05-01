@@ -1,20 +1,22 @@
-from datetime import timedelta
 import logging
 import os
 import sys
 import shutil
 import time
+import gemmi
+import numpy as np
 import pandas as pd
+from datetime import timedelta
 from pathlib import Path
 from argparse import ArgumentParser
-from gemmi import cif
+from itertools import islice
+from Bio.PDB import PDBParser, MMCIFIO, Structure, Model, Chain, Residue, Atom
 from HelperModule.Ring import Ring
 from HelperModule.getter_functions import (
-    get_data_from_cif,
-    get_atoms_from_pdb,
+    get_data_from_cif
 )
 from HelperModule.helper_functions import are_bonds_correct
-from HelperModule.constants import *
+from HelperModule.constants import MAIN_DIR, DEFAULT_DICT_NAME
 
 
 def process_correct_rings(output_dir, ligand, filepath):
@@ -29,8 +31,87 @@ def process_correct_rings(output_dir, ligand, filepath):
     shutil.copy(filepath, new_name_path)
 
 
+def convert_pdb_to_cif(pdb_file: str, cif_file: str):
+    p = PDBParser()
+    struc = p.get_structure("", pdb_file)
+    io = MMCIFIO()
+    io.set_structure(struc)
+    io.save(cif_file)
+
+
+# only for 5char ligands
+def convert_custom_pdb_to_cif(pdb_file: Path, cif_file: str, atom_count: int):
+    structure = Structure.Structure("")
+    model = Model.Model(0)
+    chain = ""
+    residue = ""
+    with open(pdb_file, "r") as f:
+        next(f)
+        for i, line in enumerate(islice(f, atom_count)):
+            if i == 0:
+                residue_name = line[17:22]
+                chain_id = line[22:24]
+                seq_id = line[24:28]
+                ins_code = line[28]
+
+                residue = Residue.Residue(("H_", int(seq_id), ins_code), residue_name, "")
+                chain = Chain.Chain(chain_id)
+
+            x = float(line[32:40])
+            y = float(line[40:48]) 
+            z = float(line[48:56]) 
+            name = line[12:16].strip()
+            fullname = line[12:16]
+            altloc = line[16].strip() or " "
+            serial_number = int(line[6:11])
+            occupancy = float(line[56:62].strip() or 0.0)
+            bfactor = float(line[62:68].strip() or 0.0)
+            element = line[78:80].strip()
+            if not element:
+                element = name[0]
+            
+            atom = Atom.Atom(
+                name=name,
+                coord=np.array([x, y, z]),
+                bfactor=bfactor,
+                occupancy=occupancy,
+                altloc=altloc,
+                fullname=fullname,
+                serial_number=serial_number,
+                element=element
+            )
+            residue.add(atom)
+        chain.add(residue)
+    model.add(chain)
+    structure.add(model)
+    io = MMCIFIO()
+    io.set_structure(structure)
+    io.save(cif_file)
+
+
+def convert_to_cif(ligand: str, pdb_file: Path, cif_file: Path, atom_number: int):
+    if len(ligand) == 5:
+        convert_custom_pdb_to_cif(pdb_file, str(cif_file), atom_number)
+    else:
+        convert_pdb_to_cif(str(pdb_file), str(cif_file))
+    
+    if cif_file.exists() and cif_file.stat().st_size > 0:
+        pdb_file.unlink() 
+
+
+def get_atom_names(cif_file):
+    ring_structure = gemmi.read_structure(str(cif_file))
+    model = ring_structure[0]
+    chain = model[0]
+    res = chain[0]
+    atom_names = set()
+    for atom in res:
+        atom_names.add(atom.name)
+    return atom_names
+
+
 def filter_by_bond_type(
-    patterns_df, dir_with_patterns: Path, ring: Ring, output_dir: Path, document: cif.Document
+    patterns_df, dir_with_patterns: Path, ring: Ring, output_dir: Path, document: gemmi.cif.Document
 ) -> None:
     processed_data_dict = {}
     target_count = 0
@@ -39,14 +120,12 @@ def filter_by_bond_type(
     for row in patterns_df.itertuples(index=False):
         ligand = row.Residues.split()[0]
 
-        filepath = dir_with_patterns / "patterns" / (row.Id + ".pdb")
+        pdb_filepath = dir_with_patterns / "patterns" / (row.Id + ".pdb")
+        cif_filepath = pdb_filepath.with_suffix('.cif')
+        if pdb_filepath.exists():
+            convert_to_cif(ligand, pdb_filepath, cif_filepath, ring.atom_number)
 
-        # only for debug/manual adding of rings, etc
-        if not filepath.exists():
-            logging.warning(f"{str(filepath)} does not exist.")
-            continue
-
-        atom_names = get_atoms_from_pdb(filepath, ring)
+        atom_names = get_atom_names(cif_filepath)
 
         key = (ligand, frozenset(atom_names))
 
@@ -55,7 +134,7 @@ def filter_by_bond_type(
             if not processed_data_dict[key]:
                 continue
 
-            process_correct_rings(output_dir, ligand, filepath)
+            process_correct_rings(output_dir, ligand, cif_filepath)
             target_ring_rows.append(row._asdict())
             target_count += 1
             continue
@@ -67,12 +146,12 @@ def filter_by_bond_type(
 
         bond_df, atom_df = get_data_from_cif(ligand_block)
         is_correct = are_bonds_correct(
-            atom_names, bond_df, atom_df, ring, filepath, ligand
+            atom_names, bond_df, atom_df, ring, cif_filepath, ligand
         )
         processed_data_dict[key] = is_correct
 
         if is_correct:
-            process_correct_rings(output_dir, ligand, filepath)
+            process_correct_rings(output_dir, ligand, cif_filepath)
             target_ring_rows.append(row._asdict())
             target_count += 1
 
@@ -87,7 +166,7 @@ def main(output_path: str, input_path: str):
         level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
     )
 
-    logging.info(f"Starting FilterDataset...")
+    logging.info("Starting FilterDataset...")
 
     main_workflow_output_dir = Path(output_path) / MAIN_DIR
     if not os.path.exists(main_workflow_output_dir):
@@ -144,7 +223,7 @@ def main(output_path: str, input_path: str):
     dfs_by_ring = {atom: grouped[atom].copy() for atom in target_atoms if atom in grouped}
 
     logging.info("Reading components dictionary...")
-    document = cif.read(str(path_to_comp_dict))
+    document = gemmi.cif.read(str(path_to_comp_dict))
 
     for ring in Ring:
         logging.info(f"Processing {ring.name.lower()}...")
