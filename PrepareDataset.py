@@ -1,13 +1,10 @@
 import re
 from argparse import ArgumentParser
-from HelperModule.Ring import Ring
 from HelperModule.helper_functions import (unzip_file, is_mono_installed,
-                                           read_component_dictionary, is_valid_directory, file_exists)
+                                           is_valid_directory, file_exists)
 from HelperModule.constants import *
 import logging
-from gemmi import cif
 from multiprocessing import cpu_count
-from typing import Dict, List
 import json
 import subprocess
 import os
@@ -16,95 +13,15 @@ import sys
 CPU_COUNT = cpu_count()
 
 
-def is_target_ring_in_name(ring: Ring, all_names: list[str]) -> bool:
-    if ring.name_substring and ';' in ring.name_substring:
-        # we need to check multiple substrings (like 'benz' and 'phen')
-        substrings = ring.name_substring.split(';')
-        for substring in substrings:
-            if any(substring in name for name in all_names):
-                return True
-        return False
-    elif ring.name_substring:
-        return any(ring.name_substring in name for name in all_names)
-    return False
-
-def extract_ligand_names(doc: cif.Document) -> Dict[Ring, List[str]]:
-    logging.info("Extracting ligand names...")
-    extracted_names = {ring: [] for ring in Ring}
-
-    # ONLY pure DNA/RNA nucleotides to exclude
-    # (Keep AMP, ADP, ATP, etc. as they're ligands)
-    pure_nucleotides = {
-        # Single letter nucleic acid bases (DNA/RNA)
-        "A",
-        "C",
-        "G",
-        "U",
-        "T",
-        "N",
-        # Two-letter deoxynucleotides (DNA)
-        "DA",
-        "DC",
-        "DG",
-        "DT",
-        "DU",
-        # Two-letter ribonucleotides (RNA)
-        "RA",
-        "RC",
-        "RG",
-        "RU",
-        "RT",
-        # Nucleic acid sugars (part of DNA/RNA backbone)
-        "RIB",
-        "DRB",
-    }
-
-
-    amino_acids = {
-        "PHE", "TYR", "TRP", "HIS", "PRO"
-    }
-
-    for i, ligand_block in enumerate(doc):
-        compound_name = ligand_block.find_value('_chem_comp.name')
-        try:
-            other_names = ligand_block.find(['_pdbx_chem_comp_identifier.identifier'])
-            synonyms = ligand_block.find_value('_chem_comp.pdbx_synonyms')
-
-            all_names = [compound_name.lower()] + [list(e)[0].lower() for e in list(other_names)] + \
-                        [synonyms.lower()]
-
-            ligand_name = ligand_block.find_value('_chem_comp.id')
-
-            if str(ligand_name) in pure_nucleotides or str(ligand_name) in amino_acids:
-                continue
-
-            for ring in Ring:
-                if is_target_ring_in_name(ring, all_names):
-                    extracted_names[ring].append(ligand_name)
-
-        except Exception:
-            logging.warning(f'Error while extracting ligand names from block with name {compound_name}. Skipping...')
-            continue
-
-    if not all(extracted_names.values()):
-        logging.warning('No rings found. Exiting...')
-        sys.exit(1)
-
-    return extracted_names
-
-
-def create_config_for_pq(path_to_main_output: Path, path_to_pdb_local: str, ligands_dict: Dict[Ring, List[str]]) -> None:
+def create_config_for_pq(path_to_main_output: Path, path_to_pdb_local: str) -> None:
     logging.info("Creating configuration file for Pattern Query...")
     config = {
         "InputFolders": [path_to_pdb_local],
-        "Queries": [],
+        "Queries": [{"Id": "RingsInHetResidues",
+                    "QueryString": "Rings().Inside(HetResidues())"}],
         "StatisticsOnly": False,
         "MaxParallelism": CPU_COUNT
     }
-
-    for ring, ligands in ligands_dict.items():
-        config["Queries"].append(create_query(ring.name.lower(), ring.pattern_query +
-                                              f".Inside(Residues({ligands}))"))
 
     try:
         with open(path_to_main_output / PQ_CONFIG, "w") as outfile:
@@ -118,13 +35,6 @@ def create_config_for_pq(path_to_main_output: Path, path_to_pdb_local: str, liga
         sys.exit(1)
 
 
-def create_query(query_id: str, query_string: str) -> Dict[str, str]:
-    return {
-        "Id": query_id,
-        "QueryString": query_string
-    }
-
-
 def start_program(results_folder: Path, pq_cmd):
     commands = {
         'posix': ['mono', pq_cmd],
@@ -136,7 +46,7 @@ def start_program(results_folder: Path, pq_cmd):
 
     logging.info(f"Running Pattern Query on CPU count: {CPU_COUNT}...")
 
-    pq_process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, universal_newlines=True)
+    pq_process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, universal_newlines=True)
 
     for line in pq_process.stdout:
         error_pattern = r"^\[.*?\] Error:"
@@ -152,8 +62,9 @@ def prerequisites_are_met(input_dir: str, output_dir: str) -> bool:
     if not is_valid_directory(input_dir):
         return False
 
-    if not is_valid_directory(input_path / CCP4_DIR):
-        return False
+    #TODO 
+    # if not is_valid_directory(input_path / CCP4_DIR):
+    #     return False
 
     if not is_valid_directory(input_path / PDB):
         return False
@@ -161,8 +72,9 @@ def prerequisites_are_met(input_dir: str, output_dir: str) -> bool:
     if not file_exists(input_path / DEFAULT_DICT_NAME):
         return False
 
-    if not file_exists(input_path / PDB_INFO_FILE):
-        return False
+    #TODO generate this file form data.csv
+    # if not file_exists(input_path / PDB_INFO_FILE):
+    #     return False
 
     if not file_exists(PQ_CMD):
         return False
@@ -200,20 +112,20 @@ def get_results(src: Path, dst: Path):
         logging.error(str(e))
         sys.exit(1)
 
+#TODO use later with onedata
+# def unzip_all(path_to_archives: Path) -> None:
+#     lst = path_to_archives.glob('*.zip')
+#     for zip_ in lst:
+#         try:
+#             unzip_file(zip_, path_to_archives)
+#         except Exception as e:
+#             logging.error(str(e))
+#             sys.exit(1)
 
-def unzip_all(path_to_archives: Path) -> None:
-    lst = path_to_archives.glob('*.zip')
-    for zip_ in lst:
-        try:
-            unzip_file(zip_, path_to_archives)
-        except Exception as e:
-            logging.error(str(e))
-            sys.exit(1)
 
-
-def preprocess_data(data_path: Path) -> None:
-    unzip_all(data_path / PDB)
-    unzip_all(data_path / CCP4_DIR)
+# def preprocess_data(data_path: Path) -> None:
+#     unzip_all(data_path / PDB)
+#     unzip_all(data_path / CCP4_DIR)
 
 
 def main(input_path: str, output_path: str):
@@ -224,15 +136,13 @@ def main(input_path: str, output_path: str):
     if not prerequisites_are_met(input_path, output_path):
         sys.exit(1)
 
-    preprocess_data(Path(input_path).resolve())
-
-    document = read_component_dictionary(Path(input_path).resolve() / DEFAULT_DICT_NAME)
+    #TODO
+    # preprocess_data(Path(input_path).resolve())
 
     path_to_local_pdb = Path(input_path).resolve() / PDB
     main_workflow_output_dir = Path(output_path).resolve() / MAIN_DIR
 
-    ligands_dict = extract_ligand_names(document)
-    create_config_for_pq(main_workflow_output_dir, str(path_to_local_pdb), ligands_dict)
+    create_config_for_pq(main_workflow_output_dir, str(path_to_local_pdb))
 
     start_program(main_workflow_output_dir, pq_cmd=PQ_CMD)
 

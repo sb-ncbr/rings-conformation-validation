@@ -1,9 +1,10 @@
+from datetime import timedelta
 import logging
 import os
 import sys
 import shutil
+import time
 import pandas as pd
-import pickle
 from pathlib import Path
 from argparse import ArgumentParser
 from gemmi import cif
@@ -17,7 +18,7 @@ from HelperModule.constants import *
 
 
 def process_correct_rings(output_dir, ligand, filepath):
-    output_pdb_dir = output_dir / ligand / "patterns"
+    output_pdb_dir = output_dir / "filtered_ligands" / ligand / "patterns"
 
     output_pdb_dir.mkdir(parents=True, exist_ok=True)
     filename = filepath.name
@@ -28,23 +29,17 @@ def process_correct_rings(output_dir, ligand, filepath):
     shutil.copy(filepath, new_name_path)
 
 
-def run_filter(
-    input_path: Path, ring: Ring, output_dir: Path, document: cif.Document
+def filter_by_bond_type(
+    patterns_df, dir_with_patterns: Path, ring: Ring, output_dir: Path, document: cif.Document
 ) -> None:
-    patterns_df = pd.read_csv(input_path / "patterns.csv")
-    pkl_path = Path(f"{ring.name.lower()}_ligand_ring_map.pkl")
     processed_data_dict = {}
-
-    if pkl_path.is_file():
-        with pkl_path.open("rb") as f:
-            processed_data_dict = pickle.load(f)
-
     target_count = 0
+    target_ring_rows = []
 
     for row in patterns_df.itertuples(index=False):
         ligand = row.Residues.split()[0]
 
-        filepath = input_path / "patterns" / (row.Id + ".pdb")
+        filepath = dir_with_patterns / "patterns" / (row.Id + ".pdb")
 
         # only for debug/manual adding of rings, etc
         if not filepath.exists():
@@ -61,6 +56,7 @@ def run_filter(
                 continue
 
             process_correct_rings(output_dir, ligand, filepath)
+            target_ring_rows.append(row._asdict())
             target_count += 1
             continue
 
@@ -77,27 +73,21 @@ def run_filter(
 
         if is_correct:
             process_correct_rings(output_dir, ligand, filepath)
+            target_ring_rows.append(row._asdict())
             target_count += 1
 
-    with pkl_path.open("wb") as f:
-        pickle.dump(processed_data_dict, f)
 
-    logging.info(f"[{ring.name.capitalize()}]: {target_count} patterns were found.")
+    res_df = pd.DataFrame(target_ring_rows)
+    res_df.to_csv(output_dir / f"filtered_patterns_{ring.name.lower()}.csv")
+    return res_df
 
 
-def main(ring: str, output_path: str, input_path: str):
+def main(output_path: str, input_path: str):
     logging.basicConfig(
         level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
     )
 
-    ring = ring.upper()
-    if ring not in Ring.__members__.keys():
-        logging.error(
-            f"Ring {ring} is not a valid Ring. Currently supported: {[e.name for e in Ring]} Exiting..."
-        )
-        sys.exit(1)
-
-    logging.info(f"[{ring.capitalize()}]: Starting FilterDataset...")
+    logging.info(f"Starting FilterDataset...")
 
     main_workflow_output_dir = Path(output_path) / MAIN_DIR
     if not os.path.exists(main_workflow_output_dir):
@@ -113,19 +103,65 @@ def main(ring: str, output_path: str, input_path: str):
         sys.exit(1)
 
     # that is the output dir from the previous script (previous step)
-    dir_with_patterns = main_workflow_output_dir / "result" / ring.lower()
+    dir_with_patterns = main_workflow_output_dir / "result" / "RingsInHetResidues"
 
     if not dir_with_patterns.exists() or not any(dir_with_patterns.iterdir()):
         logging.error(f'The directory "{dir_with_patterns}" does not exist or is empty')
         sys.exit(1)
 
-    current_ring_path = main_workflow_output_dir / ring.lower()
-    dir_for_filtered_patterns = current_ring_path / "filtered_ligands"
+    logging.info("Creating rings statistics...")
+    df = pd.read_csv(dir_with_patterns / "patterns.csv")
+
+    stats_df = (
+        df.groupby("Atoms", as_index=False)
+        .agg(
+            TotalRingCount=("Atoms", "size"),
+            UniqueLigands=("Signature", "nunique"),
+            UniquePdbs=("ParentId", "nunique"),
+        )
+        .sort_values("TotalRingCount", ascending=False)
+        .reset_index(drop=True)
+    )
+
+    true_totals = {
+        "TotalRingCount": len(df),
+        "UniqueLigands": df["Signature"].nunique(),
+        "UniquePdbs": df["ParentId"].nunique(),
+    }
+
+    totals_row = pd.DataFrame([true_totals])
+    totals_row["Atoms"] = "TOTAL"
+
+    stats_df_with_total = pd.concat([stats_df, totals_row], ignore_index=True)
+    csv_stats = main_workflow_output_dir / "all_rings_stats_nofilter.csv"
+    stats_df_with_total.to_csv(csv_stats)
+    logging.info(f"Done. Exported to {csv_stats}")
+
+    target_atoms = [ring.atoms for ring in Ring]
+
+    grouped = dict(tuple(df.groupby("Atoms")))
+
+    dfs_by_ring = {atom: grouped[atom].copy() for atom in target_atoms if atom in grouped}
 
     logging.info("Reading components dictionary...")
     document = cif.read(str(path_to_comp_dict))
-    run_filter(dir_with_patterns, Ring[ring], dir_for_filtered_patterns, document)
-    logging.info(f"[{ring.capitalize()}]: FilterDataset has completed successfully")
+
+    for ring in Ring:
+        logging.info(f"Processing {ring.name.lower()}...")
+        output_path = main_workflow_output_dir / ring.name.lower()
+        output_path.mkdir(parents=True, exist_ok=True)
+
+        df = filter_by_bond_type(
+            dfs_by_ring[ring.atoms],
+            dir_with_patterns,
+            ring,
+            output_path,
+            document
+        )
+
+        logging.info(f"{ring.name} | Rings={len(df)} | Unique ligands={df["Signature"].nunique()} | Unique PDBs={df["ParentId"].nunique()}")
+
+    logging.info("FilterDataset has completed successfully.")
 
 
 if __name__ == "__main__":
@@ -135,14 +171,6 @@ if __name__ == "__main__":
     )
     required = parser.add_argument_group("required named arguments")
 
-    required.add_argument(
-        "-r",
-        "--ring",
-        required=True,
-        type=str,
-        help=f"Choose the target ring type. Currently supported:"
-        f" {[e.name for e in Ring]}",
-    )
     required.add_argument(
         "-o",
         "--output",
@@ -159,5 +187,10 @@ if __name__ == "__main__":
     )
 
     args = parser.parse_args()
+    start = time.perf_counter()
+    
+    main(args.output, args.input)
 
-    main(args.ring, args.output, args.input)
+    elapsed = time.perf_counter() - start
+    formatted = str(timedelta(seconds=elapsed))
+    logging.info(f"Total time: {formatted}")
