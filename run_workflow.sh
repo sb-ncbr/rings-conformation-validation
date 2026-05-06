@@ -64,3 +64,10 @@ python3 RingAnalysisResult.py -r "$CYCLOHEXANE" -i "${INPUT_DATA_FOLDER}/${DATA_
 python3 RingAnalysisResult.py -r "$BENZENE" -i "${INPUT_DATA_FOLDER}/${DATA_FOLDER}" -o "$OUTPUT_FOLDER"
 python3 RingAnalysisResult.py -r "$OXANE" -i "${INPUT_DATA_FOLDER}/${DATA_FOLDER}" -o "$OUTPUT_FOLDER"
 python3 RingAnalysisResult.py -r "$OXOLANE" -i "${INPUT_DATA_FOLDER}/${DATA_FOLDER}" -o "$OUTPUT_FOLDER"
+
+python3 BuildWebDataset.py -i "$INPUT_DATA_FOLDER/${DATA_FOLDER}" -o "$OUTPUT_FOLDER"
+exit_code=$?
+if [ $exit_code -ne 0 ]; then
+    echo "Error: BuildWebDataset failed with exit code $exit_code"
+    exit $exit_code
+fi
