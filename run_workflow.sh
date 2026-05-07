@@ -58,13 +58,6 @@ python3 CompareHR.py "$OUTPUT_FOLDER"
 # analyse electron density coverage
 python3 AnalyseCoverage.py "$OUTPUT_FOLDER" "${INPUT_DATA_FOLDER}/${DATA_FOLDER}/ccp4"
 
-# analyse and summarise results
-python3 RingAnalysisResult.py -r "$CYCLOPENTANE" -i "${INPUT_DATA_FOLDER}/${DATA_FOLDER}" -o "$OUTPUT_FOLDER"
-python3 RingAnalysisResult.py -r "$CYCLOHEXANE" -i "${INPUT_DATA_FOLDER}/${DATA_FOLDER}" -o "$OUTPUT_FOLDER"
-python3 RingAnalysisResult.py -r "$BENZENE" -i "${INPUT_DATA_FOLDER}/${DATA_FOLDER}" -o "$OUTPUT_FOLDER"
-python3 RingAnalysisResult.py -r "$OXANE" -i "${INPUT_DATA_FOLDER}/${DATA_FOLDER}" -o "$OUTPUT_FOLDER"
-python3 RingAnalysisResult.py -r "$OXOLANE" -i "${INPUT_DATA_FOLDER}/${DATA_FOLDER}" -o "$OUTPUT_FOLDER"
-
 python3 BuildWebDataset.py -i "$INPUT_DATA_FOLDER/${DATA_FOLDER}" -o "$OUTPUT_FOLDER"
 exit_code=$?
 if [ $exit_code -ne 0 ]; then

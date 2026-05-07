@@ -2,37 +2,18 @@ from argparse import ArgumentParser
 from collections import defaultdict
 from datetime import timedelta
 from pathlib import Path
+import pickle
 import time
 import numpy as np
 import pandas as pd
 import json
 import logging
-from HelperModule.constants import MAIN_DIR
-import swifter
+from multiprocessing import Pool, cpu_count
+from HelperModule.constants import EL_DENSITY_OUTPUT_DIR, MAIN_DIR, PDB_DIR
+from HelperModule.Ring import Ring
 import gemmi
 
-
-
-# here should be listed all analyzed rings
-RINGS_FAVORABLE_CONFS_MAP = {
-    "cyclohexane": ["Chair"],
-    "cyclopentane": ["Envelope", "Half chair"],
-    "benzene": ["Flat"],
-    "oxane": ["Chair"],
-    "oxolane": "ALL_EXCEPT_UNFAVORABLE"
-}
-
-RINGS_UNFAVORABLE_CONFS_MAP = {
-    "oxolane": ["Flat"]
-}
-ATOMS_COUNT = {
-    "cyclohexane": 6,
-    "cyclopentane": 5,
-    "benzene": 6,
-    "oxane": 6,
-    "oxolane": 5
-}
-
+CPU_COUNT = cpu_count()
 
 logging.basicConfig(
     filemode='w',
@@ -41,7 +22,7 @@ logging.basicConfig(
 )
 
 
-def get_atom_names(cif_file):
+def get_atom_names_as_string(cif_file):
     ring_structure = gemmi.read_structure(str(cif_file))
     model = ring_structure[0]
     chain = model[0]
@@ -88,23 +69,18 @@ def get_conf_info(conf_name: str):
             return "Unknown"
         
 
-def is_favorable_conf(ring_name, conf_name):
-    favorable = RINGS_FAVORABLE_CONFS_MAP.get(ring_name)
-
-    if favorable == "ALL_EXCEPT_UNFAVORABLE":
-        return conf_name not in RINGS_UNFAVORABLE_CONFS_MAP.get(ring_name, [])
-
-    return conf_name in (favorable or [])
+def is_favorable_conf(ring: Ring, conf_name):
+    return conf_name in (ring.favourable_confs or [])
 
 
-def generate_ring_data(df: pd.DataFrame, ring_name):
+def generate_ring_data(df: pd.DataFrame, ring: Ring):
     """
     Build JSON-like dict for a single ring.
     """
-    group = df[df["ring_type"] == ring_name.capitalize()]
+    group = df[df["ring_type"] == ring.name.capitalize()]
 
     ring_data = {
-        "name": ring_name.capitalize(),
+        "name": ring.name.capitalize(),
         "ccd": int(group["ccd_id"].nunique()),   # unique CCD count
         "pdb": int(group["pdb_id"].nunique()),    # unique PDB count
         "total": len(group),                        # total rows
@@ -113,7 +89,7 @@ def generate_ring_data(df: pd.DataFrame, ring_name):
 
     conf_counts = group["conformation"].value_counts()
 
-    if ring_name.lower() in ["oxane", "oxolane"]:
+    if ring in [Ring.OXANE, Ring.OXOLANE]:
         conf_classes= defaultdict(lambda: {"subtypes": [], "total": 0})
 
         for conf_name, count in conf_counts.items():
@@ -128,7 +104,7 @@ def generate_ring_data(df: pd.DataFrame, ring_name):
             conf_data = {
                     "name": conf_class,
                     "count": int(data["total"]),
-                    "favorable": is_favorable_conf(ring_name, conf_class),
+                    "favorable": is_favorable_conf(ring, conf_class),
                     "subtypes": data["subtypes"] if conf_class != "Flat" else []
                 }
             ring_data["confs"].append(conf_data)
@@ -139,7 +115,7 @@ def generate_ring_data(df: pd.DataFrame, ring_name):
             conf_data = {
                         "name": conf_name,
                         "count": int(count),
-                        "favorable": is_favorable_conf(ring_name, conf_name),
+                        "favorable": is_favorable_conf(ring, conf_name),
                         "subtypes": []
                     }
 
@@ -170,53 +146,30 @@ def format_to_float(value):
         return None
 
 
-def format_coverage(value, ring_type):
-    if value == "N/A":
-        return "N/A"
 
-    # get integer part of value
-    score = int(float(value))
-
-    # get atom count (default None if unknown ring type)
-    atoms = ATOMS_COUNT.get(ring_type)
-
-    if atoms is None:
-        raise ValueError(f"Unknown ring type: {ring_type}")
-
-    return f"{score};{atoms}"
-
-
-def format_ring_df(df, ring):
+def format_ring_df(df):
 
     df.rename(columns={"Coverage": "Ring Coverage"}, inplace=True)
     df['Ring Coverage'] = df['Ring Coverage'].replace(np.nan, 'N/A')
-    # Apply row-wise
-    df["Ring Coverage"] = df.swifter.apply(
-        lambda row: format_coverage(row["Ring Coverage"], ring),
-        axis=1
-    )
-    df['Ring Coverage Float'] = df['Ring Coverage'].swifter.apply(format_to_float)
-    df['Ring Coverage (%)'] = df['Ring Coverage'].swifter.apply(format_to_percentage)
-
-    df['Resolution (A)'] = df['Resolution (A)'].round(2).astype(str)
-    df['Resolution (A)'] = df['Resolution (A)'].replace('nan', 'N/A')
+    df['Ring Coverage Float'] = df['Ring Coverage'].apply(format_to_float)
+    df['Ring Coverage (%)'] = df['Ring Coverage'].apply(format_to_percentage)
 
     return df
 
 
-def build_filepath_to_cif(row, ring, path_to_data):
-    return path_to_data / ring / "filtered_ligands" / row['Ligand ID'] / "patterns" / str(row["Ring_ID"] + ".cif")
+def build_filepath_to_cif(row, ring_name: str, path_to_data):
+    return path_to_data / ring_name / "filtered_ligands" / row['Ligand ID'] / "patterns" / str(row["Ring_ID"] + ".cif")
 
 
-def get_atoms_from_row(row, ring, path_to_data):
-    path = build_filepath_to_cif(row, ring, path_to_data)
-    return get_atom_names(path)
+def get_atoms_from_row(row, ring_name: str, path_to_data):
+    path = build_filepath_to_cif(row, ring_name, path_to_data)
+    return get_atom_names_as_string(path)
 
 
 def create_json(df, stats_json_path):
     logging.info(f"Creating JSON for statistics")
     rings_json = []
-    for ring in RINGS_FAVORABLE_CONFS_MAP.keys():
+    for ring in Ring:
         ring_data = generate_ring_data(df, ring)
         rings_json.append(ring_data)
 
@@ -248,17 +201,16 @@ def create_json(df, stats_json_path):
     
 
 
-def update_ring_columns(df, ring, path_to_data):
-    df['Ring Type'] = ring.capitalize()
+def update_ring_columns(df, ring: Ring, path_to_data):
+    df['Ring Type'] = ring.name.capitalize()
     df.rename(columns={"Ligand_name": "Ligand ID"}, inplace=True)
-
-    if ring not in ["oxane", "oxolane"]:
+    if ring not in [Ring.OXANE, Ring.OXOLANE]:
         df['Conformation'] = (df['Conformation'].
                               str.replace('_', ' ').str.capitalize())
 
     df['Conformation'] = df['Conformation'].replace({
         'Tw boat': 'Twist boat',
-        'P': 'Flat'  # for oxolane change P as Planar to Flat
+        'P': 'Flat'  # for oxolane/oxane change P as Planar to Flat
     })
 
     df["Residue ID"] = (
@@ -281,12 +233,12 @@ def update_ring_columns(df, ring, path_to_data):
     )
 
     df["atom_names"] = df.apply(
-        lambda row: get_atoms_from_row(row, ring, path_to_data),
+        lambda row: get_atoms_from_row(row, ring.name.lower(), path_to_data),
         axis=1
     )
 
     df["id"] = (
-    df["Entry ID"].astype(str) + "_" +
+    df["PDB ID"].astype(str) + "_" +
     df["Chain ID"].astype(str) + "_" +
     df["Ligand ID"].astype(str) + "_" +
     df["Residue ID"].astype(str) +
@@ -300,28 +252,38 @@ def update_ring_columns(df, ring, path_to_data):
     df.drop(columns=["Residues"], inplace=True)
 
 
-def process_ring(ring, path_to_data):
-    logging.info(f"Processing {ring}")
+def process_ring(ring: Ring, path_to_data):
+    ring_lower = ring.name.lower()
+    logging.info(f"Processing {ring_lower}")
 
-    ring_data_path = path_to_data / ring / "final_results" / "result_summary.xlsx"
-    ring_df = pd.read_excel(ring_data_path)
+    hr_results_filepath = path_to_data / ring_lower / "hr_analysis_output" / "result_conf_chart.csv"
+    conf_df = pd.read_csv(hr_results_filepath, delimiter=';')
+
     patterns_df = pd.read_csv(
-        path_to_data / ring / f"filtered_patterns_{ring}.csv",
-        usecols=["Id", "Residues"],
+        path_to_data / ring_lower / f"filtered_patterns_{ring_lower}.csv",
+        usecols=["Id", "ParentId", "Residues"],
         dtype=str
     )
-    ring_df["pq_id"] = ring_df["Ring_ID"].str.split("_", n=1).str[1]
+    patterns_df.rename(columns={"ParentId": "PDB ID"}, inplace=True)
+    conf_df["pq_id"] = conf_df["Ring_ID"].str.split("_", n=1).str[1]
 
-    pq_rings_combined_df = ring_df.merge(
+    merged_with_pq_df = conf_df.merge(
         patterns_df,
         left_on="pq_id",
         right_on="Id",
-        how="left"  # keep all rows from ring_df, add matches from patterns_df
+        how="left"  # keep all rows from conf_df, add matches from patterns_df
     ).drop(columns=["Id"])
 
-    update_ring_columns(pq_rings_combined_df, ring, path_to_data)
+    el_density_path = path_to_data / ring_lower / EL_DENSITY_OUTPUT_DIR / f"{ring_lower}_params__analysis_output.csv"
+    el_density_df = pd.read_csv(el_density_path, delimiter=',')
+    merged_with_coverage_df = pd.merge(merged_with_pq_df, el_density_df[['Id', 'Coverage']],
+                               left_on="Ring_ID",
+                               right_on="Id",
+                               how='left').drop(columns=["Id"])
 
-    return pq_rings_combined_df
+    update_ring_columns(merged_with_coverage_df, ring, path_to_data)
+
+    return merged_with_coverage_df
 
 
 def format_single_method(method: str) -> str:
@@ -393,15 +355,14 @@ def combine_with_valtrends_data(df, path_to_valtrends_data):
     .astype(str)
     .str.replace('"', '')
     .str.strip()
-    .str.upper()
+    .str.lower()
 )
 
     combined_df = df.merge(
         valtrends_df,
-        left_on="Entry ID",
-        right_on="PDB ID",
+        on="PDB ID",
         how="left"  # keep all rows from all_rings_df, add matches from valtrends_df
-    ).drop(columns=["PDB ID"])
+    )
 
     return combined_df
 
@@ -417,18 +378,73 @@ def reformat_final_data(df):
     df['averageLigandRSCC'] = df['averageLigandRSCC'].fillna('N/A').astype(str)
     df['averageLigandRSR'] = df['averageLigandRSR'].fillna('N/A').astype(str)
 
-    new_column_order = ['Entry ID', 'Chain ID', 'Ligand ID', 'Residue ID', 'PDB_ins_code', 'Ring Type', 'Resolution (A)', 'Ring Coverage',
-                        'Ring Coverage Float', 'Ring Coverage (%)', 'Conformation', 'Experimental Method',
+    df["Resolution"] = (
+        pd.to_numeric(df["Resolution"].replace(".", np.nan), errors="coerce")
+        .round(2)
+        .astype("string")
+        .fillna("N/A")
+    )
+
+    new_column_order = ['PDB ID', 'Chain ID', 'Ligand ID', 'Residue ID', 'PDB_ins_code', 'Ring Type', 'Resolution', 'Ring Coverage',
+                        'Ring Coverage Float', 'Ring Coverage (%)', 'Conformation', 'conf_main_type', 'Experimental Method',
                         'averageLigandRSR', 'averageLigandRSCC']
     df = df[new_column_order]
     new_column_names = ['pdb_id', 'chain_id', 'ccd_id', 'residue_id', 'PDB_ins_code', 'ring_type', 'resolution', 'ring_coverage_counts',
-                        'ring_coverage_float', 'ring_coverage', 'conformation', 'experimental_method', 'rsr',
+                        'ring_coverage_float', 'ring_coverage', 'conformation', 'conf_main_type', 'experimental_method', 'rsr',
                         'rscc']
     df.columns = new_column_names
 
     format_methods(df)
     return df
 
+
+def extract_metadata(cif_filepath: Path):
+    try:
+        doc = gemmi.cif.read(str(cif_filepath))
+        block = doc.sole_block()
+
+        method = block.find_value("_exptl.method")
+        if method:
+            method = method.strip("'")
+        else:
+            # loop = block.find_loop("_exptl.method")
+            methods = [m.strip("'") for m in block.find_loop("_exptl.method")]
+            method = ", ".join(methods)
+        
+        resolution = block.find_value("_refine.ls_d_res_high")
+        return method, resolution, cif_filepath.stem.removesuffix('.cif')
+    except Exception as e:
+        logging.error(e, stack_info=True, exc_info=True)
+    
+
+def add_metadata_from_cif(df, input_dir):
+    logging.info("Extracting info about experimental methods and resolution...")
+    cache = {}
+    cache_file = Path("methods_and_resolution.pkl")
+    if cache_file.exists():
+        logging.info("Cache file loaded.")
+        with cache_file.open('rb') as f:
+            cache = pickle.load(f)
+        df[["Experimental Method", "Resolution"]] = df["PDB ID"].map(cache).apply(pd.Series) 
+        return df
+    
+    total = len(df["PDB ID"].unique())
+    paths_list = [Path(input_dir) / PDB_DIR / f"{pdb_id}.cif.gz" for pdb_id in sorted(df["PDB ID"].unique())]
+
+    with Pool(int(CPU_COUNT)) as p:
+        for i, output in enumerate(p.imap(extract_metadata, paths_list),1):
+            method, res, pdb_id = output
+            logging.info(f"[{i}/{total}] | pdb_id: {pdb_id} method: {method} | res: {res}")
+            cache[pdb_id] = (method, res)
+
+    logging.info("Saving to cache file...")
+    with cache_file.open('wb') as f:
+        pickle.dump(cache, f)
+
+    logging.info("Enriching the dataframe with exp. method and resolution data...")
+    df[["Experimental Method", "Resolution"]] = df["PDB ID"].map(cache).apply(pd.Series)   
+    return df  
+            
 
 def main(output_dir, input_dir):
     final_output_path = Path(output_dir) / "web"
@@ -438,13 +454,18 @@ def main(output_dir, input_dir):
 
     all_rings: list[pd.DataFrame] = []
 
-    for ring in RINGS_FAVORABLE_CONFS_MAP.keys():
+    for ring in Ring:
         ring_df = process_ring(ring, Path(output_dir) / MAIN_DIR)
-        all_rings.append(format_ring_df(ring_df, ring))
+        if ring in [Ring.OXANE, Ring.OXOLANE]:
+            ring_df["conf_main_type"] = ring_df["Conformation"].apply(get_conf_info)
+        else:
+            ring_df["conf_main_type"] = ring_df["Conformation"]
+        all_rings.append(format_ring_df(ring_df))
 
     all_rings_df = pd.concat(all_rings, ignore_index=False)
     combined_df = combine_with_valtrends_data(all_rings_df, valtrends_data_path)
-    reformatted_df = reformat_final_data(combined_df)
+    complete_df = add_metadata_from_cif(combined_df, input_dir)
+    reformatted_df = reformat_final_data(complete_df)
     final_df = check_for_duplicates(reformatted_df, final_output_path)
     create_json(final_df, stats_json_path)
     logging.info(f"Final data are being written to {final_output_path}")

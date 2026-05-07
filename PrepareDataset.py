@@ -9,11 +9,10 @@ from pathlib import Path
 from multiprocessing import cpu_count
 from HelperModule.helper_functions import (unzip_file, is_mono_installed,
                                            is_valid_directory, file_exists)
-from HelperModule.constants import DEFAULT_DICT_NAME, MAIN_DIR
+from HelperModule.constants import DEFAULT_DICT_NAME, MAIN_DIR, PDB_DIR
 
 CPU_COUNT = cpu_count()
 PQ_CONFIG = "config.json"
-PDB_DIR = "pdb_copy_local"
 PQ_CMD = Path("PatternQuery_1.1.25.8.19") / "WebChemistry.Queries.Service.exe"
 
 
@@ -75,10 +74,6 @@ def prerequisites_are_met(input_dir: str, output_dir: str) -> bool:
 
     if not file_exists(input_path / DEFAULT_DICT_NAME):
         return False
-
-    #TODO generate this file form data.csv
-    # if not file_exists(input_path / PDB_INFO_FILE):
-    #     return False
 
     if not file_exists(PQ_CMD):
         return False
