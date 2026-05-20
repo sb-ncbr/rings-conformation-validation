@@ -126,6 +126,10 @@ def filter_by_bond_type(
     for row in patterns_df.itertuples(index=False):
         ligand = row.Residues.split()[0]
 
+        # skipping unknown ligand
+        if ligand == "UNL":
+            continue
+
         pdb_filepath = dir_with_patterns / "patterns" / (row.Id + ".pdb")
         cif_filepath = pdb_filepath.with_suffix('.cif')
         if pdb_filepath.exists():

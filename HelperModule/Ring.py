@@ -7,6 +7,9 @@ class Ring(Enum):
     BENZENE = auto()
     OXANE=auto()
     OXOLANE=auto()
+    PYRROLIDINE = auto()    # all single bonds
+    PYRROLE = auto()    # aromatic
+    PYRROLINE = auto()  # one double bond
 
     @property
     def atoms(self) -> str:
@@ -21,6 +24,12 @@ class Ring(Enum):
                 return "C*5-O*1"
             case Ring.OXOLANE:
                 return "C*4-O*1"
+            case Ring.PYRROLIDINE:
+                return "C*4-N*1"
+            case Ring.PYRROLE:
+                return "C*4-N*1"
+            case Ring.PYRROLINE:
+                return "C*4-N*1"
 
     @property
     def atom_number(self) -> int:
@@ -34,6 +43,12 @@ class Ring(Enum):
             case Ring.OXANE:
                 return 6
             case Ring.OXOLANE:
+                return 5
+            case Ring.PYRROLIDINE:
+                return 5
+            case Ring.PYRROLE:
+                return 5
+            case Ring.PYRROLINE:
                 return 5
             
     @property

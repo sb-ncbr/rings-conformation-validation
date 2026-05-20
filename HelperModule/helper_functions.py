@@ -7,36 +7,45 @@ from typing import Set
 from gemmi import cif
 from HelperModule.Ring import Ring
 
+def is_pyrrolidine(all_single, aromatic_sum):
+    return aromatic_sum == 0 and all_single
 
-def is_oxane(current_ring_df, all_single, filepath, ligand, sorted_atoms):
+
+def is_pyrrole(current_ring_df, all_single, aromatic_sum):
+    if all_single:
+        return False
+    return aromatic_sum == Ring.PYRROLE.atom_number or (current_ring_df["value_order"].str.upper() == "DOUB").sum() == 2
+
+def is_pyrroline(current_ring_df, aromatic_sum):
+    return aromatic_sum == 0 and (current_ring_df["value_order"].str.upper() == "DOUB").sum() == 1
+    
+
+def is_oxane(all_single, aromatic_sum, filepath, ligand, sorted_atoms):
     if not all_single:
         return False
     
-    aromatic_count = (current_ring_df["aromatic"].str.upper() == "Y").sum()
-    if aromatic_count > 0:
-        logging.warning(f"[Skipped oxane in ligand {ligand} atoms: {sorted_atoms}]: all bonds labelled as single AND at {aromatic_count} bond(s) labelled as aromatic: {filepath}")
+    if aromatic_sum > 0:
+        logging.warning(f"[Skipped oxane in ligand {ligand} atoms: {sorted_atoms}]: all bonds labelled as single AND at {aromatic_sum} bond(s) labelled as aromatic: {filepath}")
         return False
     return True
 
 
-def is_oxolane(current_ring_df, all_single, filepath, ligand, sorted_atoms):
+def is_oxolane(all_single, aromatic_sum, filepath, ligand, sorted_atoms):
     if not all_single:
         return False
     
-    aromatic_count = (current_ring_df["aromatic"].str.upper() == "Y").sum()
-    if aromatic_count > 0:
-        logging.warning(f"[Skipped oxolane in ligand {ligand} atoms: {sorted_atoms}] all bonds labelled as single AND {aromatic_count} bond(s) labelled as aromatic: {filepath}")
+    if aromatic_sum > 0:
+        logging.warning(f"[Skipped oxolane in ligand {ligand} atoms: {sorted_atoms}] all bonds labelled as single AND {aromatic_sum} bond(s) labelled as aromatic: {filepath}")
         return False
     return True
 
 
-def is_cyclopentane(current_ring_df, bond_df, atom_names, metal_atoms, all_single, filepath, ligand):
+def is_cyclopentane(bond_df, atom_names, metal_atoms, all_single, aromatic_sum, filepath, ligand):
     if not all_single:
         return False
     
-    aromatic_count = (current_ring_df["aromatic"].str.upper() == "Y").sum()
-    if aromatic_count > 0:
-        logging.warning(f"[Skipped cyclopentane in ligand {ligand} atoms: {sorted(atom_names)}] all bonds labelled as single AND {aromatic_count} bond(s) labelled as aromatic: {filepath}")
+    if aromatic_sum > 0:
+        logging.warning(f"[Skipped cyclopentane in ligand {ligand} atoms: {sorted(atom_names)}] all bonds labelled as single AND {aromatic_sum} bond(s) labelled as aromatic: {filepath}")
         return False
 
     metal_bonds = bond_df[
@@ -52,24 +61,23 @@ def is_cyclopentane(current_ring_df, bond_df, atom_names, metal_atoms, all_singl
     return len(metal_bonds) != Ring.CYCLOPENTANE.atom_number
 
 
-def is_cyclohexane(current_ring_df, all_single, filepath, ligand, sorted_atoms):
+def is_cyclohexane(all_single, aromatic_sum, filepath, ligand, sorted_atoms):
     if not all_single:
         return False
     
-    aromatic_count = (current_ring_df["aromatic"].str.upper() == "Y").sum()
     # condition <aromatic_count> == 6 is checked in is_benzene function
-    if 0 < aromatic_count < 6:
-        logging.warning(f"[Skipped cyclohexane in ligand {ligand} atoms: {sorted_atoms}] all bonds labelled as single AND {aromatic_count} bond(s) labelled as aromatic: {filepath}")
+    if 0 < aromatic_sum < Ring.CYCLOHEXANE.atom_number:
+        logging.warning(f"[Skipped cyclohexane in ligand {ligand} atoms: {sorted_atoms}] all bonds labelled as single AND {aromatic_sum} bond(s) labelled as aromatic: {filepath}")
         return False
     # double check
-    if aromatic_count == 0:
+    if aromatic_sum == 0:
         return True
 
 
-def is_benzene(current_ring_df, all_single, filepath, ligand, sorted_atoms):
+def is_benzene(current_ring_df, all_single, aromatic_sum, filepath, ligand, sorted_atoms):
     double_bonds_count = (current_ring_df["value_order"].str.upper() == "DOUB").sum()
 
-    if (current_ring_df["aromatic"].str.upper() == "Y").all():
+    if aromatic_sum == Ring.BENZENE.atom_number:
         if all_single:
             logging.warning(f"[Skipped benzene in ligand {ligand} atoms: {sorted_atoms}] all bonds labelled as aromatic AND single: {filepath}")
             return False
@@ -84,7 +92,7 @@ def is_benzene(current_ring_df, all_single, filepath, ligand, sorted_atoms):
     
         return True
     
-    if (current_ring_df["aromatic"].str.upper() == "N").all():
+    if aromatic_sum == 0:
         
         if double_bonds_count == 3:
             logging.info(f"[Possible Benzene included in ligand {ligand} atoms: {sorted_atoms}] has THREE bonds labelled as double BUT all bonds as NOT aromatic: {filepath}")
@@ -107,26 +115,35 @@ def classify_ring(
     mask = bond_df["atom_id_1"].isin(atom_names) & bond_df["atom_id_2"].isin(atom_names)
     current_ring_df = bond_df[mask]
     all_single = (current_ring_df["value_order"].str.upper() == "SING").all()
+    aromatic_sum = (current_ring_df["aromatic"].str.upper() == "Y").sum()
     sorted_atoms = sorted(atom_names)
     match atoms_shape:
         case "C*6":
-            if is_benzene(current_ring_df, all_single, filepath, ligand, sorted_atoms):
+            if is_benzene(current_ring_df, all_single, aromatic_sum, filepath, ligand, sorted_atoms):
                 return Ring.BENZENE
-            if is_cyclohexane(current_ring_df, all_single, filepath, ligand, sorted_atoms):
+            if is_cyclohexane(all_single, aromatic_sum, filepath, ligand, sorted_atoms):
                 return Ring.CYCLOHEXANE
             return None
         case "C*5":
             metal_atoms = ["FE", "MN", "CO", "RU", "TI", "ZR", "NI", "CR", "RH", "IR", "RE", "OS"]
-            if is_cyclopentane(current_ring_df, bond_df, atom_names, metal_atoms, all_single, filepath, ligand):
+            if is_cyclopentane(bond_df, atom_names, metal_atoms, all_single, aromatic_sum, filepath, ligand):
                 return Ring.CYCLOPENTANE
             return None
         case "C*5-O*1":
-            if is_oxane(current_ring_df, all_single, filepath, ligand, sorted_atoms):
+            if is_oxane(all_single, aromatic_sum, filepath, ligand, sorted_atoms):
                 return Ring.OXANE
             return None
         case "C*4-O*1":
-            if is_oxolane(current_ring_df, all_single, filepath, ligand, sorted_atoms):
+            if is_oxolane(all_single, aromatic_sum, filepath, ligand, sorted_atoms):
                 return Ring.OXOLANE
+            return None
+        case "C*4-N*1":
+            if is_pyrrolidine(all_single, aromatic_sum):
+                return Ring.PYRROLIDINE
+            if is_pyrrole(current_ring_df, all_single, aromatic_sum):
+                return Ring.PYRROLE
+            if is_pyrroline(current_ring_df, aromatic_sum):
+                return Ring.PYRROLINE
             return None
         case _:
             return None

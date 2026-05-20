@@ -78,6 +78,8 @@ def generate_ring_data(df: pd.DataFrame, ring: Ring):
     Build JSON-like dict for a single ring.
     """
     group = df[df["ring_type"] == ring.name.capitalize()]
+    if group.empty:
+        return None
 
     ring_data = {
         "name": ring.name.capitalize(),
@@ -171,6 +173,8 @@ def create_json(df, stats_json_path):
     rings_json = []
     for ring in Ring:
         ring_data = generate_ring_data(df, ring)
+        if ring_data is None:
+            continue
         rings_json.append(ring_data)
 
 
@@ -187,7 +191,7 @@ def create_json(df, stats_json_path):
     stats = {
         "summary": {
             "rings": int(len(df)),
-            "ligands": int(df['residue_id'].nunique()),
+            "ligands": int(df['ccd_id'].nunique()),
             "pdbEntries": int(df['pdb_id'].nunique())
         },
         "experimentalMethods": exp_methods,
@@ -254,9 +258,12 @@ def update_ring_columns(df, ring: Ring, path_to_data):
 
 def process_ring(ring: Ring, path_to_data):
     ring_lower = ring.name.lower()
-    logging.info(f"Processing {ring_lower}")
+    
 
     hr_results_filepath = path_to_data / ring_lower / "hr_analysis_output" / "result_conf_chart.csv"
+    if not hr_results_filepath.exists():
+        return None
+    logging.info(f"Processing {ring_lower}")
     conf_df = pd.read_csv(hr_results_filepath, delimiter=';')
 
     patterns_df = pd.read_csv(
@@ -420,7 +427,7 @@ def extract_metadata(cif_filepath: Path):
 def add_metadata_from_cif(df, input_dir):
     logging.info("Extracting info about experimental methods and resolution...")
     cache = {}
-    cache_file = Path("methods_and_resolution.pkl")
+    cache_file = Path("./cache") / "methods_and_resolution.pkl"
     if cache_file.exists():
         logging.info("Cache file loaded.")
         with cache_file.open('rb') as f:
@@ -456,6 +463,9 @@ def main(output_dir, input_dir):
 
     for ring in Ring:
         ring_df = process_ring(ring, Path(output_dir) / MAIN_DIR)
+        if ring_df is None:
+            continue
+
         if ring in [Ring.OXANE, Ring.OXOLANE]:
             ring_df["conf_main_type"] = ring_df["Conformation"].apply(get_conf_info)
         else:
