@@ -6,18 +6,6 @@ from zipfile import ZipFile
 from typing import Set
 from gemmi import cif
 from HelperModule.Ring import Ring
-
-def is_pyrrolidine(all_single, aromatic_sum):
-    return aromatic_sum == 0 and all_single
-
-
-def is_pyrrole(current_ring_df, all_single, aromatic_sum):
-    if all_single:
-        return False
-    return aromatic_sum == Ring.PYRROLE.atom_number or (current_ring_df["value_order"].str.upper() == "DOUB").sum() == 2
-
-def is_pyrroline(current_ring_df, aromatic_sum):
-    return aromatic_sum == 0 and (current_ring_df["value_order"].str.upper() == "DOUB").sum() == 1
     
 
 def is_oxane(all_single, aromatic_sum, filepath, ligand, sorted_atoms):
@@ -81,11 +69,6 @@ def is_benzene(current_ring_df, all_single, aromatic_sum, filepath, ligand, sort
         if all_single:
             logging.warning(f"[Skipped benzene in ligand {ligand} atoms: {sorted_atoms}] all bonds labelled as aromatic AND single: {filepath}")
             return False
-        
-        # if double_bonds_count == 3:
-        #     logging.info(f"[OK Benzene] has THREE bonds labelled as double and all aromatic: {filepath}")
-        # elif double_bonds_count == 2:
-        #     logging.info(f"[OK Benzene] has TWO bonds labelled as double and all aromatic: {filepath}")
         if double_bonds_count not in (2, 3):
             logging.warning(f"[Skipped benzene in ligand {ligand} atoms: {sorted_atoms}]: Skipping a ring with {double_bonds_count} bonds labelled as double and all aromatic: {filepath}")
             return False
@@ -136,14 +119,6 @@ def classify_ring(
         case "C*4-O*1":
             if is_oxolane(all_single, aromatic_sum, filepath, ligand, sorted_atoms):
                 return Ring.OXOLANE
-            return None
-        case "C*4-N*1":
-            if is_pyrrolidine(all_single, aromatic_sum):
-                return Ring.PYRROLIDINE
-            if is_pyrrole(current_ring_df, all_single, aromatic_sum):
-                return Ring.PYRROLE
-            if is_pyrroline(current_ring_df, aromatic_sum):
-                return Ring.PYRROLINE
             return None
         case _:
             return None
