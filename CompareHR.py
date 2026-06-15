@@ -51,10 +51,10 @@ def main(input_dir):
             rings_hr = json.load(f)
 
         with open(hr_analysis_output / "result_conf_chart.csv", "w") as out_f:
-            header = "Ligand_name;Ring_ID;Conformation;theta1;theta2;theta3\n"
+            header = "Ligand_name;Ring_ID;Conformation;theta1;theta2;theta3;dist_to_ideal;dist_to_second_best;fit_ratio\n"
             out_f.write(header)
 
-            for ligand_id, hr_angles in rings_hr.items():
+            for ring_id, hr_angles in rings_hr.items():
                 best_dist = float("inf")
                 best_conf = None
                 hr_dists = {}
@@ -62,19 +62,23 @@ def main(input_dir):
                 for conf_name, std_hr in standard_HRs.items():
                     hr_dist = dist_hr_angles(std_hr, hr_angles, ring)
                     hr_dists[conf_name] = hr_dist
+
                     if hr_dist < best_dist:
                         best_dist = hr_dist
                         best_conf = conf_name
 
-                item1 = ligand_id.split("_")[0]
-                item2 = ligand_id
+                sorted_dists = sorted(hr_dists.values())
+                second_dist = sorted_dists[1]
+                fit_ratio = best_dist / second_dist if second_dist != 0 else ""
+
+                ligand_id = ring_id.split("_")[0]
 
                 if ring in FIVE_MEMBERED_RINGS:
-                    line = f"{item1};{item2};{best_conf.upper()};{hr_angles['theta1']};{hr_angles['theta2']};\n"
+                    line = f"{ligand_id};{ring_id};{best_conf.upper()};{hr_angles['theta1']};{hr_angles['theta2']};{best_dist};{second_dist};{fit_ratio}\n"
                 else:
                     theta3 = hr_angles.get('theta3')
                     theta3_str = "" if theta3 is None else theta3
-                    line = f"{item1};{item2};{best_conf.upper()};{hr_angles['theta1']};{hr_angles['theta2']};{theta3_str}\n"
+                    line = f"{ligand_id};{ring_id};{best_conf.upper()};{hr_angles['theta1']};{hr_angles['theta2']};{theta3_str};{best_dist};{second_dist};{fit_ratio}\n"
                 out_f.write(line)
 
 
