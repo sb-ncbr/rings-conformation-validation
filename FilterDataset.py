@@ -17,7 +17,7 @@ from HelperModule.Ring import Ring
 from HelperModule.getter_functions import (
     get_data_from_cif
 )
-from HelperModule.helper_functions import classify_ring
+from HelperModule.helper_functions import classify_ring, read_component_dictionary
 from HelperModule.constants import MAIN_DIR, DEFAULT_DICT_NAME
 
 
@@ -187,10 +187,7 @@ def main(output_path: str, input_path: str):
         sys.exit(1)
 
     path_to_comp_dict = Path(input_path) / DEFAULT_DICT_NAME
-
-    if not path_to_comp_dict.exists():
-        logging.error(f"The file {path_to_comp_dict} does not exist. Exiting...")
-        sys.exit(1)
+    document = read_component_dictionary(path_to_comp_dict)
 
     # that is the output dir from the previous script (previous step)
     dir_with_patterns = main_workflow_output_dir / "result" / "RingsInHetResidues"
@@ -233,8 +230,6 @@ def main(output_path: str, input_path: str):
 
     dfs_by_ring_structure = {atom: grouped[atom].copy() for atom in target_atoms if atom in grouped}
 
-    logging.info("Reading components dictionary...")
-    document = gemmi.cif.read(str(path_to_comp_dict))
     result_dict = {}
     atoms_shape_groups = set()
     for ring in Ring:

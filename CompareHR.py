@@ -51,7 +51,7 @@ def main(input_dir):
             rings_hr = json.load(f)
 
         with open(hr_analysis_output / "result_conf_chart.csv", "w") as out_f:
-            header = "Ligand_name;Ring_ID;Conformation;theta1;theta2;theta3;dist_to_ideal;dist_to_second_best;fit_ratio\n"
+            header = "Ligand_name;Ring_ID;Conformation;dist_to_ideal;dist_to_second_best;fit_ratio;theta1;theta2;theta3\n"
             out_f.write(header)
 
             for ring_id, hr_angles in rings_hr.items():
@@ -74,11 +74,11 @@ def main(input_dir):
                 ligand_id = ring_id.split("_")[0]
 
                 if ring in FIVE_MEMBERED_RINGS:
-                    line = f"{ligand_id};{ring_id};{best_conf.upper()};{hr_angles['theta1']};{hr_angles['theta2']};{best_dist};{second_dist};{fit_ratio}\n"
+                    line = f"{ligand_id};{ring_id};{best_conf.upper()};{best_dist:.3f};{second_dist:.3f};{fit_ratio:.3f};{hr_angles['theta1']};{hr_angles['theta2']}\n"
                 else:
                     theta3 = hr_angles.get('theta3')
                     theta3_str = "" if theta3 is None else theta3
-                    line = f"{ligand_id};{ring_id};{best_conf.upper()};{hr_angles['theta1']};{hr_angles['theta2']};{theta3_str};{best_dist};{second_dist};{fit_ratio}\n"
+                    line = f"{ligand_id};{ring_id};{best_conf.upper()};{best_dist:.3f};{second_dist:.3f};{fit_ratio:.3f};{hr_angles['theta1']};{hr_angles['theta2']};{theta3_str}\n"
                 out_f.write(line)
 
 
