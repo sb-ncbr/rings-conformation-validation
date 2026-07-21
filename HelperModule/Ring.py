@@ -48,7 +48,7 @@ class Ring(Enum):
             case Ring.OXANE:
                 return ["Chair"]
             case Ring.OXOLANE:
-                return ["Twist", "Envelope"]
+                return ["Twist"]
             
 
 
