@@ -26,6 +26,14 @@ class WorkflowConfig:
     def patterns_dir(self) -> Path:
         return self.main_dir / "result" / "RingsInHetResidues"
 
+    @property
+    def state_dir(self) -> Path:
+        return self.main_dir / "last_state_data"
+
+    @property
+    def methods_info(self) -> Path:
+        return self.state_dir / "methods_and_resolution.tsv"
+
 
 def load_config(filename="config.yaml"):
 
@@ -36,5 +44,5 @@ def load_config(filename="config.yaml"):
         output_dir=Path(data["output_dir"]),
         pdb_dir=Path(data["pdb_dir"]),
         ccd=Path(data["ccd"]),
-        valtrends_files=Path(data["valtrends_file"])
+        valtrends_file=Path(data["valtrends_file"])
     )

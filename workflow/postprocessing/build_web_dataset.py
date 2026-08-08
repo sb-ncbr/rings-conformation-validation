@@ -14,18 +14,6 @@ EL_DENSITY_OUTPUT_DIR = "el-density-output"
 logger = logging.getLogger(__name__)
 
 
-def get_atom_names_as_string(cif_file):
-    ring_structure = gemmi.read_structure(str(cif_file))
-    model = ring_structure[0]
-    chain = model[0]
-    res = chain[0]
-    atom_names = []
-    for atom in res:
-        atom_names.append(atom.name)
-    atom_names_str = "-".join(atom_names)
-    return atom_names_str
-
-
 # for oxane, oxolane
 def get_conf_info(conf_name: str):
     match conf_name:
@@ -151,15 +139,6 @@ def format_ring_df(df):
     return df
 
 
-def build_filepath_to_cif(row, ring_name: str, path_to_data):
-    return path_to_data / ring_name / "filtered_ligands" / row['Ligand ID'] / "patterns" / str(row["Ring_ID"] + ".cif")
-
-
-def get_atoms_from_row(row, ring_name: str, path_to_data):
-    path = build_filepath_to_cif(row, ring_name, path_to_data)
-    return get_atom_names_as_string(path)
-
-
 def create_json(df, stats_json_path):
     logger.info(f"Creating JSON for statistics")
     rings_json = []
@@ -197,7 +176,7 @@ def create_json(df, stats_json_path):
     
 
 
-def update_ring_columns(df, ring: Ring, path_to_data):
+def update_ring_columns(df, ring: Ring):
     df['Ring Type'] = ring.name.capitalize()
     df.rename(columns={"Ligand_name": "Ligand ID"}, inplace=True)
     if ring not in [Ring.OXANE, Ring.OXOLANE]:
@@ -228,23 +207,18 @@ def update_ring_columns(df, ring: Ring, path_to_data):
         .fillna("")
     )
 
-    df["atom_names"] = df.apply(
-        lambda row: get_atoms_from_row(row, ring.name.lower(), path_to_data),
-        axis=1
-    )
-
     df["id"] = (
     df["PDB ID"].astype(str) + "_" +
     df["Chain ID"].astype(str) + "_" +
     df["Ligand ID"].astype(str) + "_" +
     df["Residue ID"].astype(str) +
     df["PDB_ins_code"].apply(lambda x: f"_{x}" if x else "") + "_" +
-    df["atom_names"].astype(str)
+    df["AtomNames"].astype(str)
 )
 
     df.drop(columns=["Ring_ID"], inplace=True)
     df.drop(columns=["pq_id"], inplace=True)
-    df.drop(columns=["atom_names"], inplace=True)
+    df.drop(columns=["AtomNames"], inplace=True)
     df.drop(columns=["Residues"], inplace=True)
 
 
@@ -260,7 +234,7 @@ def process_ring(ring: Ring, path_to_data):
 
     patterns_df = pd.read_csv(
         path_to_data / ring_lower / f"filtered_patterns_{ring_lower}.csv",
-        usecols=["Id", "ParentId", "Residues"],
+        usecols=["Id", "ParentId", "Residues", "AtomNames"],
         dtype=str
     )
     patterns_df.rename(columns={"ParentId": "PDB ID"}, inplace=True)
@@ -280,7 +254,7 @@ def process_ring(ring: Ring, path_to_data):
                                right_on="Id",
                                how='left').drop(columns=["Id"])
 
-    update_ring_columns(merged_with_coverage_df, ring, path_to_data)
+    update_ring_columns(merged_with_coverage_df, ring)
 
     return merged_with_coverage_df
 
@@ -355,6 +329,7 @@ def combine_with_valtrends_data(df, path_to_valtrends_data):
     .str.replace('"', '')
     .str.strip()
     .str.lower()
+    .radd("pdb_0000") # temp
 )
 
     combined_df = df.merge(
@@ -416,18 +391,16 @@ def extract_metadata(cif_filepath: Path):
         logger.error(e, stack_info=True, exc_info=True)
     
 
-def add_metadata_from_cif(df, pdb_dir):
+def add_metadata_from_cif(df, pdb_dir, methods_info: Path):
 
     logger.info("Extracting info about experimental methods and resolution...")
-
-    metadata_file = Path("workflow") / "metadata" / "methods_and_resolution.tsv"
-    metadata_file.parent.mkdir(exist_ok=True)
+    methods_info.parent.mkdir(exist_ok=True)
 
     metadata = {}
 
     # load existing metadata
-    if metadata_file.exists():
-        old = pd.read_csv(metadata_file, sep="\t")
+    if methods_info.exists():
+        old = pd.read_csv(methods_info, sep="\t")
         metadata = dict(
             zip(
                 old["PDB ID"],
@@ -439,8 +412,9 @@ def add_metadata_from_cif(df, pdb_dir):
     missing = set(df["PDB ID"]) - set(metadata)
 
     if missing:
+        missing_metadata = {}
         paths = [
-            pdb_dir / f"{pdb_id}.cif.gz"
+            pdb_dir / pdb_id[9:11] / pdb_id / "structures" / f"{pdb_id}.cif.gz"
             for pdb_id in missing
         ]
 
@@ -450,12 +424,12 @@ def add_metadata_from_cif(df, pdb_dir):
                     "%s | method: %s | resolution: %s",
                     pdb_id, method, res
                 )
-                metadata[pdb_id] = (method, res)
+                missing_metadata[pdb_id] = (method, res)
 
         # overwrite metadata file with updated content
-        with open(metadata_file, "w") as f:
+        with open(methods_info, "a") as f:
             f.write("PDB ID\tExperimental Method\tResolution\n")
-            for pdb_id, (method, res) in metadata.items():
+            for pdb_id, (method, res) in missing_metadata.items():
                 f.write(f"{pdb_id}\t{method}\t{res}\n")
 
     else:
@@ -468,7 +442,7 @@ def add_metadata_from_cif(df, pdb_dir):
     return df
             
 
-def create_data_for_web(output_dir: Path, main_dir: Path, pdb_dir: Path, valtrends_data_path: Path):
+def create_data_for_web(output_dir: Path, main_dir: Path, pdb_dir: Path, valtrends_data_path: Path, methods_info: Path):
     final_output_path = output_dir / "web"
     final_output_path.mkdir(parents=True, exist_ok=True)
     stats_json_path = final_output_path / "stats.json"
@@ -488,7 +462,7 @@ def create_data_for_web(output_dir: Path, main_dir: Path, pdb_dir: Path, valtren
 
     all_rings_df = pd.concat(all_rings, ignore_index=False)
     combined_df = combine_with_valtrends_data(all_rings_df, valtrends_data_path)
-    complete_df = add_metadata_from_cif(combined_df, pdb_dir)
+    complete_df = add_metadata_from_cif(combined_df, pdb_dir, methods_info)
     reformatted_df = reformat_final_data(complete_df)
     final_df = check_for_duplicates(reformatted_df, final_output_path)
     create_json(final_df, stats_json_path)

@@ -9,9 +9,9 @@ from workflow.utils.helpers import get_pdb_names_filtered
 
 
 logger = logging.getLogger(__name__)
-
-CCP4_NOT_FOUND_CACHE = Path("ccp4_not_found.json")
-CCP4_FAILED_CACHE = Path("ccp4_failed.json")
+CACHE = Path("cache") / "download_ccp4"
+CCP4_NOT_FOUND_CACHE = CACHE / "not_found.json"
+CCP4_FAILED_CACHE = CACHE / "failed.json"
 
 
 def load_json(filename):
@@ -67,7 +67,6 @@ def download_many(names: Set[str], not_found: Set, out_dir: Path, max_workers: i
         "failed": 0
     }
 
-    # not_found = set()
     failed = set()
 
     with ThreadPoolExecutor(max_workers=max_workers) as executor:
@@ -102,22 +101,28 @@ def download_density_maps(ccp4_dir: Path, main_dir: Path):
     not_found = load_json(CCP4_NOT_FOUND_CACHE)
     prev_failed = load_json(CCP4_FAILED_CACHE)
     logger.info(f'Previously failed: {len(prev_failed)}')
+
+    already_exists = 0
+
+    filtered_names = []
+
+    for pdb in names:
+        if pdb.lower() in not_found:
+            continue
+
+        path = ccp4_dir / f"{pdb.lower()}.ccp4.gz"
+
+        if path.exists() and path.stat().st_size > 0:
+            already_exists += 1
+            continue
+
+        filtered_names.append(pdb)
+
     logger.info(f'Not found: {len(not_found)}')
+    logger.info(f'Already existing: {already_exists}')
+    logger.info(f"{len(filtered_names)} files will be processed...")
 
-    names = [
-        pdb
-        for pdb in names
-        if pdb.lower() not in not_found
-        and not (
-        (path := ccp4_dir / f"{pdb.lower()}.ccp4.gz").exists()
-        and path.stat().st_size > 0
-    )
-    ]
-
-    logger.info(f"{len(names)} files will be processed...")
-
-
-    results = download_many(names, not_found, out_dir=ccp4_dir, max_workers=32)
+    results = download_many(filtered_names, not_found, out_dir=ccp4_dir, max_workers=32)
 
     logger.info(f"Downloaded: {results["success"]}")
     logger.info(f"Not found: {results["not_found"]}")

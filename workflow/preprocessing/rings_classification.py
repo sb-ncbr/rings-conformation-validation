@@ -1,10 +1,5 @@
-import logging
 from typing import Set
 from workflow.models.Ring import Ring
-
-
-logger = logging.getLogger(__name__)
-validation_logger = logging.getLogger("validation")
 
 
 def is_oxane(all_single, aromatic_sum, filepath, ligand, sorted_atoms):
@@ -12,7 +7,7 @@ def is_oxane(all_single, aromatic_sum, filepath, ligand, sorted_atoms):
         return False
     
     if aromatic_sum > 0:
-        validation_logger.info(f"[Skipped oxane in ligand {ligand} atoms: {sorted_atoms}]: all bonds labelled as single AND at {aromatic_sum} bond(s) labelled as aromatic: {filepath}")
+        # validation_logger.info(f"[Skipped oxane in ligand {ligand} atoms: {sorted_atoms}]: all bonds labelled as single AND at {aromatic_sum} bond(s) labelled as aromatic: {filepath}")
         return False
     return True
 
@@ -22,7 +17,7 @@ def is_oxolane(all_single, aromatic_sum, filepath, ligand, sorted_atoms):
         return False
     
     if aromatic_sum > 0:
-        validation_logger.info(f"[Skipped oxolane in ligand {ligand} atoms: {sorted_atoms}] all bonds labelled as single AND {aromatic_sum} bond(s) labelled as aromatic: {filepath}")
+        # validation_logger.info(f"[Skipped oxolane in ligand {ligand} atoms: {sorted_atoms}] all bonds labelled as single AND {aromatic_sum} bond(s) labelled as aromatic: {filepath}")
         return False
     return True
 
@@ -32,7 +27,7 @@ def is_cyclopentane(bond_df, atom_names, metal_atoms, all_single, aromatic_sum, 
         return False
     
     if aromatic_sum > 0:
-        validation_logger.info(f"[Skipped cyclopentane in ligand {ligand} atoms: {sorted(atom_names)}] all bonds labelled as single AND {aromatic_sum} bond(s) labelled as aromatic: {filepath}")
+        # validation_logger.info(f"[Skipped cyclopentane in ligand {ligand} atoms: {sorted(atom_names)}] all bonds labelled as single AND {aromatic_sum} bond(s) labelled as aromatic: {filepath}")
         return False
 
     metal_bonds = bond_df[
@@ -54,7 +49,7 @@ def is_cyclohexane(all_single, aromatic_sum, filepath, ligand, sorted_atoms):
     
     # condition <aromatic_count> == 6 is checked in is_benzene function
     if 0 < aromatic_sum < Ring.CYCLOHEXANE.atom_number:
-        validation_logger.info(f"[Skipped cyclohexane in ligand {ligand} atoms: {sorted_atoms}] all bonds labelled as single AND {aromatic_sum} bond(s) labelled as aromatic: {filepath}")
+        # validation_logger.info(f"[Skipped cyclohexane in ligand {ligand} atoms: {sorted_atoms}] all bonds labelled as single AND {aromatic_sum} bond(s) labelled as aromatic: {filepath}")
         return False
     # double check
     if aromatic_sum == 0:
@@ -66,10 +61,10 @@ def is_benzene(current_ring_df, all_single, aromatic_sum, filepath, ligand, sort
 
     if aromatic_sum == Ring.BENZENE.atom_number:
         if all_single:
-            validation_logger.info(f"[Skipped benzene in ligand {ligand} atoms: {sorted_atoms}] all bonds labelled as aromatic AND single: {filepath}")
+            # validation_logger.info(f"[Skipped benzene in ligand {ligand} atoms: {sorted_atoms}] all bonds labelled as aromatic AND single: {filepath}")
             return False
         if double_bonds_count not in (2, 3):
-            validation_logger.info(f"[Skipped benzene in ligand {ligand} atoms: {sorted_atoms}]: Skipping a ring with {double_bonds_count} bonds labelled as double and all aromatic: {filepath}")
+            # validation_logger.info(f"[Skipped benzene in ligand {ligand} atoms: {sorted_atoms}]: Skipping a ring with {double_bonds_count} bonds labelled as double and all aromatic: {filepath}")
             return False
     
         return True
@@ -77,7 +72,7 @@ def is_benzene(current_ring_df, all_single, aromatic_sum, filepath, ligand, sort
     if aromatic_sum == 0:
         
         if double_bonds_count == 3:
-            validation_logger.info(f"[Possible Benzene included in ligand {ligand} atoms: {sorted_atoms}] has THREE bonds labelled as double BUT all bonds as NOT aromatic: {filepath}")
+            # validation_logger.info(f"[Possible Benzene included in ligand {ligand} atoms: {sorted_atoms}] has THREE bonds labelled as double BUT all bonds as NOT aromatic: {filepath}")
             return True
 
     return False

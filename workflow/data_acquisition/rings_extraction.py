@@ -1,14 +1,11 @@
 import json
 import logging
 import subprocess
-import os
-import shutil
 import sys
 import re
 from pathlib import Path
 from multiprocessing import cpu_count
-from typing import List
-from HelperModule.helper_functions import unzip_file
+from workflow.utils.helpers import unzip_file
 
 
 CPU_COUNT = cpu_count()
@@ -72,12 +69,9 @@ def get_results(src: Path, dst: Path):
     except Exception as e:
         logger.error(str(e))
         sys.exit(1)
+    
 
-
-def extract_rings(pdb_dir: Path, main_dir: Path):
-
-    create_config_for_pq(main_dir, str(pdb_dir))
+def extract_rings(input_dir: Path, main_dir: Path):
+    create_config_for_pq(main_dir, str(input_dir))
     start_program(main_dir, pq_cmd=PQ_CMD)
     get_results(main_dir / 'result' / 'result.zip', main_dir / 'result')
-
-

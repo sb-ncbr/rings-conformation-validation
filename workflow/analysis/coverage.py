@@ -1,7 +1,6 @@
 import csv
 import logging
 import numpy as np
-import pickle
 import time
 import pandas as pd
 from typing import List, Set
@@ -10,6 +9,7 @@ import gemmi
 from multiprocessing import Pool, cpu_count
 from pathlib import Path
 from workflow.models.Ring import Ring
+from workflow.utils.helpers import extract_extended_pdb_code, get_old_pdb_id
 
 EL_DENSITY_OUTPUT_DIR = "el-density-output"
 CPU_COUNT = cpu_count()
@@ -22,11 +22,8 @@ def run_exe_wrapper(params):
 
 
 def run_exe(path_to_ccp4file: Path, rings_paths: List[Path], more_or_equal: bool, closest_voxel: bool):
-    # logging.basicConfig(level=logging.INFO,
-    #                     format='%(asctime)s - %(levelname)s - %(message)s',
-    #                     )
     try:
-        # data["result"] of run_calculation is in this format: { benzene: [{ABC_2xyz_0: 3;5}, {...}], oxane: {...} }
+        # data["result"] of run_calculation is in this format: { benzene: [{ABC_pdb_00002xyz_0: 3;5}, {...}], oxane: {...} }
         output = run_calculation(path_to_ccp4file, rings_paths, more_or_equal, closest_voxel)
         if output is None:
             return {"data": None, "metadata": path_to_ccp4file}
@@ -52,11 +49,13 @@ def map_pdb_to_rings_filepaths(main_dir: Path, ccp4_dir: Path, rings: Set[str]):
         for ring_type in rings:
             for f in (main_dir / ring_type / "filtered_ligands").rglob("*"):
                 if f.is_file():
-                    pdb_id = f.stem.split('_')[-2][-4:] # take only last 4 chars from new pdb id
-                    # pdb_id = f.stem.split("__")[1].rsplit("_", 1)[0]
-                    logger.info(pdb_id)
+                    # ABC_pdb_00002xyz_0.cif -> pdb_00002xyz
+        
+                    extended_pdb = extract_extended_pdb_code(f.stem)
+                    pdb_id = get_old_pdb_id(extended_pdb)
+                    
                     if pdb_id in pdb_ids_for_which_ccp4_is_available:
-                        res[pdb_id].add(f)
+                        res[extended_pdb].add(f)
         logger.info(f"There are {len(res)} structures and {sum(len(v) for v in res.values())} rings with corresponding CCP4 file "
                      f"available.")
 
@@ -106,7 +105,7 @@ def get_coverage(dens_map, ring_path: Path, sigma_lvl, more_or_equal, closest_vo
 def run_calculation(input_density_ccp4: Path, rings_paths: List[Path], more_or_equal, closest_voxel):
     try:
         start = time.perf_counter()
-        output = defaultdict(list) # { benzene: [{ABC_2xyz_0: 3;5}, {...}], oxane: {...} }
+        output = defaultdict(list) # { benzene: [{ABC_pdb_00002xyz_0: 3;5}, {...}], oxane: {...} }
         dens_map = gemmi.read_ccp4_map(str(input_density_ccp4))
         dens_map.setup(float('nan'))
 
@@ -166,19 +165,25 @@ def analyse_coverage(main_dir: str, ccp4_dir: str, more_or_equal: bool, closest_
         rings: Set[str] = {ring.name.lower() for ring in Ring}
         output_path = main_dir / EL_DENSITY_OUTPUT_DIR
         output_path.mkdir(parents=True, exist_ok=True)
-        saves_path = Path("cache") / "el_density_saves"
-        saves_path.mkdir(parents=True, exist_ok=True)
 
         filename_stem = f"_params_{params}_analysis_output"
-        pkl_path = saves_path / f"{filename_stem}.pkl"
         csv_path = output_path / f"{filename_stem}.csv"
 
-        processed_data_dict = {} # "2xyz": { 'benzene': { "ABC_2xyz_0": "3;6", "ABC_2xyz_1": "6;6" }}, oxane: {...}}
-        if pkl_path.is_file():
-            with pkl_path.open("rb") as f:
-                processed_data_dict = pickle.load(f)
 
         output_path.mkdir(parents=True, exist_ok=True)
+
+        df = pd.read_csv(csv_path, header=0)
+
+        processed_data_dict = defaultdict(lambda: defaultdict(dict)) # "pdb_00002xyz": { 'benzene': { "ABC_pdb_00002xyz_0": "3;6", "ABC_pdb_00002xyz_1": "6;6" }}, oxane: {...}}
+
+        for ring_id, ring_type, ligand, coverage in df.itertuples(index=False, name=None):
+
+            # ABC_pdb_00002xyz_0 -> pdb_00002xyz
+            extended_pdb_code = ring_id[len(ligand) + 1 :].rsplit("_", 1)[0]
+            processed_data_dict[extended_pdb_code][ring_type][ring_id] = coverage
+
+        logger.warning(f"Lenght of dict: {len(processed_data_dict)}")
+
         
         logger.info(f"Scanning the directory with ccp4 files...")
         pdb_to_ring_paths_map = map_pdb_to_rings_filepaths(main_dir, ccp4_dir, rings)
@@ -186,21 +191,21 @@ def analyse_coverage(main_dir: str, ccp4_dir: str, more_or_equal: bool, closest_
         if pdb_to_ring_paths_map is None:
             logger.info(f"No files for analysis were found.")
             return
-        
         ccp4_filestems_to_process = []
         precomputed_rows = []
-        for pdb_id in pdb_to_ring_paths_map: # 2xyz -> {Path(.../benzene/filtered_ligands/ABC/patterns/ABC_2xyz_0.pdb), Path(...), ...}
-            if pdb_id in processed_data_dict:
-                for ring_type, ring_ids in processed_data_dict[pdb_id].items():
+        for ext_pdb_id in pdb_to_ring_paths_map: # pdb_00002xyz -> {Path(.../benzene/filtered_ligands/ABC/patterns/ABC_pdb_00002xyz_0.pdb), Path(...), ...}
+            if ext_pdb_id in processed_data_dict:
+                for ring_type, ring_ids in processed_data_dict[ext_pdb_id].items():
                     for ring_id, coverage in ring_ids.items():
                         ligand = ring_id.split('_')[0]
                         precomputed_rows.append((ring_id, ring_type, ligand, coverage))
-            else:    
-                ccp4_filestems_to_process.append(pdb_id)
+            else:
+                logging.warning(get_old_pdb_id(ext_pdb_id))
+                ccp4_filestems_to_process.append(get_old_pdb_id(ext_pdb_id))
 
         
         modified_filepaths = [(ccp4_dir / f"{filestem}.ccp4.gz",
-                               pdb_to_ring_paths_map[filestem],
+                               pdb_to_ring_paths_map[f"pdb_0000{filestem}"],
                                more_or_equal,
                                closest_voxel) for filestem in ccp4_filestems_to_process]
 
@@ -231,15 +236,15 @@ def analyse_coverage(main_dir: str, ccp4_dir: str, more_or_equal: bool, closest_
                     logger.info(f"{i}/{total} | {output['metadata']['ccp4_name']} | rings: {output['metadata']['n_rings']} | {output['metadata']['total_time']:.2f}s")
                     for ring_id, ring_type, ligand, coverage in output["data"]:
                         w.writerow((ring_id, ring_type, ligand, coverage))
-                        pdb_id = ring_id.split('_')[1]
-                        processed_data_dict.setdefault(pdb_id, {}).setdefault(ring_type, {})[ring_id] = coverage
+
+                        # ring id is of type A1CS3_pdb_00007ibg_0
+                        extended_pdb_code = extract_extended_pdb_code(ring_id)
+      
+                        processed_data_dict.setdefault(extended_pdb_code, {}).setdefault(ring_type, {})[ring_id] = coverage
 
                 logger.info(f"Finished analysis for {len(ccp4_filestems_to_process)} ccp4 files.")
 
         split_into_subsets(csv_path, main_dir, filename_stem)
-
-        with pkl_path.open("wb") as f:
-            pickle.dump(processed_data_dict, f)
 
     except Exception as e:
         logger.error(e, stack_info=True, exc_info=True)

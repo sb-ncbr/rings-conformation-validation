@@ -10,7 +10,7 @@ from utils.config import load_config
 from utils.logging import setup_logging
 from workflow.data_acquisition.download import download_ccp4_with_retries
 from workflow.postprocessing.build_web_dataset import create_data_for_web
-from workflow.postprocessing.generate_density_map import run_ccp4_generation
+from workflow.data_acquisition.generate_density_map import run_ccp4_generation
 from workflow.preprocessing.rings_filtering import filter_rings
 from workflow.utils.timing import ExecutionTimer, timed_step
 
@@ -29,11 +29,11 @@ def main():
 
         config.main_dir.mkdir(parents=True, exist_ok=True)
 
-        # with timed_step(timer, "Extract rings"):
-        #     extract_rings(config.pdb_dir, config.main_dir)
+        with timed_step(timer, "Extract rings"):
+            extract_rings(config.pdb_dir, config.main_dir)
 
         with timed_step(timer, "Filter rings"):
-            filter_rings(config.main_dir, config.ccd, config.patterns_dir)
+            filter_rings(config.main_dir, config.ccd, config.patterns_dir, config.state_dir)
 
         with timed_step(timer, "Assign conformations"):
             assign_conformations(config.main_dir)
@@ -48,7 +48,7 @@ def main():
             analyse_coverage(config.main_dir, config.density_dir, False, False)
 
         with timed_step(timer, "Build web dataset"):
-            create_data_for_web(config.output_dir, config.main_dir, config.pdb_dir, config.valtrends_file)
+            create_data_for_web(config.output_dir, config.main_dir, config.pdb_dir, config.valtrends_file, config.methods_info)
 
         logger.info("Workflow completed successfully")
 

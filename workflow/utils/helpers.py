@@ -2,11 +2,47 @@ import logging
 import os
 from pathlib import Path
 import re
+from zipfile import ZipFile
 import gemmi
 import pandas as pd
 from workflow.models.Ring import Ring
 
 logger = logging.getLogger(__name__)
+
+
+def extract_extended_pdb_code(string: str):
+    return string.split('_', maxsplit=1)[1].rsplit('_', maxsplit=1)[0]
+
+
+def get_old_pdb_id(extended_id: str) -> str | None:
+    """
+    Extract old 4-character PDB ID from extended PDB ID.
+
+    Example:
+        00002xyz -> 2xyz
+        abcd1234 -> None
+    """
+    extended_id = extended_id.lower()
+
+    if not extended_id.split('_')[1].startswith("0000"):
+        logger.warning(f'Skipping structure {extended_id}')
+        return None
+
+    old_id = extended_id[-4:]
+
+    return old_id
+
+
+def unzip_file(src: Path, dst: Path) -> None:
+    try:
+        if not src.exists():
+            raise FileNotFoundError(f"Source file for unzipping not found: {str(src)}")
+
+        with ZipFile(src, "r") as zip_obj:
+            zip_obj.extractall(dst)
+        os.remove(src)
+    except Exception as e:
+        logging.error(f"An error occurred during extraction: {e}")
 
 
 def count_local_files(directory):
@@ -98,13 +134,6 @@ def add_missing_fields(path):
 
 
 def get_atom_names(cif_file):
-    # print(cif_file)
-    
-    # doc = gemmi.cif.read(str(cif_file))
-    # ring_structure = gemmi.make_structure_from_block(doc.sole_block())
-    # print(len(ring_structure))
-    # # print(doc.sole_block().name)
-
     ring_structure = gemmi.read_structure(str(cif_file))
     model = ring_structure[0]
     chain = model[0]
@@ -117,36 +146,3 @@ def get_atom_names(cif_file):
 
 def get_atoms_count_from_shape(s: str) -> int:
     return sum(map(int, re.findall(r"\*(\d+)", s)))
-
-# # FOR DEBUG: from all files in local pdb
-# def initialize_pending_queue(pdb_dir: Path, pending_dir: Path):
-#     pending_dir.mkdir(parents=True, exist_ok=True)
-
-#     created = 0
-
-#     for cif_file in pdb_dir.glob("*.cif.gz"):
-#         link = pending_dir / cif_file.name
-
-#         if not link.exists():
-#             os.symlink(
-#                 cif_file.resolve(),
-#                 link
-#             )
-#             created += 1
-
-#     return created
-
-# # from file generated during rsync
-# def create_pending_links(pdb_dir: Path, pending_file: Path, pending_dir: Path):
-
-#     pending_dir.mkdir(parents=True, exist_ok=True)
-
-#     with open(pending_file) as f:
-#         for filename in f:
-#             filename = filename.strip()
-
-#             src = pdb_dir / filename
-#             dst = pending_dir / filename
-
-#             if src.exists() and not dst.exists():
-#                 dst.symlink_to(src.resolve())
