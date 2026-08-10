@@ -171,19 +171,16 @@ def analyse_coverage(main_dir: str, ccp4_dir: str, more_or_equal: bool, closest_
 
 
         output_path.mkdir(parents=True, exist_ok=True)
-
-        df = pd.read_csv(csv_path, header=0)
-
         processed_data_dict = defaultdict(lambda: defaultdict(dict)) # "pdb_00002xyz": { 'benzene': { "ABC_pdb_00002xyz_0": "3;6", "ABC_pdb_00002xyz_1": "6;6" }}, oxane: {...}}
 
-        for ring_id, ring_type, ligand, coverage in df.itertuples(index=False, name=None):
+        if csv_path.exists():
+            df = pd.read_csv(csv_path, header=0)
 
-            # ABC_pdb_00002xyz_0 -> pdb_00002xyz
-            extended_pdb_code = ring_id[len(ligand) + 1 :].rsplit("_", 1)[0]
-            processed_data_dict[extended_pdb_code][ring_type][ring_id] = coverage
+            for ring_id, ring_type, ligand, coverage in df.itertuples(index=False, name=None):
 
-        logger.warning(f"Lenght of dict: {len(processed_data_dict)}")
-
+                # ABC_pdb_00002xyz_0 -> pdb_00002xyz
+                extended_pdb_code = ring_id[len(ligand) + 1 :].rsplit("_", 1)[0]
+                processed_data_dict[extended_pdb_code][ring_type][ring_id] = coverage
         
         logger.info(f"Scanning the directory with ccp4 files...")
         pdb_to_ring_paths_map = map_pdb_to_rings_filepaths(main_dir, ccp4_dir, rings)
@@ -200,7 +197,6 @@ def analyse_coverage(main_dir: str, ccp4_dir: str, more_or_equal: bool, closest_
                         ligand = ring_id.split('_')[0]
                         precomputed_rows.append((ring_id, ring_type, ligand, coverage))
             else:
-                logging.warning(get_old_pdb_id(ext_pdb_id))
                 ccp4_filestems_to_process.append(get_old_pdb_id(ext_pdb_id))
 
         

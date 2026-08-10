@@ -224,6 +224,7 @@ def filter_rings(main_workflow_output_dir: Path, path_to_comp_dict: Path, dir_wi
         "ring_type": ring_type.name if ring_type else None,
         } for (ligand, atom_names), ring_type in processed_data_dict.items()]
 
+    rings_classes_json.parent.mkdir(parents=True, exist_ok=True)
     with open(rings_classes_json, "w") as f:
         json.dump(rings_classes, f, indent=2)
 

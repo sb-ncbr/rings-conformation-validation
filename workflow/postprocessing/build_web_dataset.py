@@ -207,6 +207,8 @@ def update_ring_columns(df, ring: Ring):
         .fillna("")
     )
 
+    df["PDB ID"].rename = df["PDB ID"]
+
     df["id"] = (
     df["PDB ID"].astype(str) + "_" +
     df["Chain ID"].astype(str) + "_" +
@@ -220,6 +222,11 @@ def update_ring_columns(df, ring: Ring):
     df.drop(columns=["pq_id"], inplace=True)
     df.drop(columns=["AtomNames"], inplace=True)
     df.drop(columns=["Residues"], inplace=True)
+
+
+def get_old_pdb_id(extended_id):
+    pdb_id = extended_id.split("_")[1]
+    return pdb_id[4:] if pdb_id[:4] == "0000" else None
 
 
 def process_ring(ring: Ring, path_to_data):
@@ -237,7 +244,8 @@ def process_ring(ring: Ring, path_to_data):
         usecols=["Id", "ParentId", "Residues", "AtomNames"],
         dtype=str
     )
-    patterns_df.rename(columns={"ParentId": "PDB ID"}, inplace=True)
+    patterns_df.rename(columns={"ParentId": "extended_PDB_ID"}, inplace=True)
+    patterns_df["PDB ID"] = patterns_df["extended_PDB_ID"].apply(get_old_pdb_id)
     conf_df["pq_id"] = conf_df["Ring_ID"].str.split("_", n=1).str[1]
 
     merged_with_pq_df = conf_df.merge(
@@ -329,7 +337,7 @@ def combine_with_valtrends_data(df, path_to_valtrends_data):
     .str.replace('"', '')
     .str.strip()
     .str.lower()
-    .radd("pdb_0000") # temp
+    # .radd("pdb_0000") # temp
 )
 
     combined_df = df.merge(
@@ -359,11 +367,11 @@ def reformat_final_data(df):
         .fillna("N/A")
     )
 
-    new_column_order = ['PDB ID', 'Chain ID', 'Ligand ID', 'Residue ID', 'PDB_ins_code', 'Ring Type', 'Resolution', 'Ring Coverage',
+    new_column_order = ['PDB ID', 'extended_PDB_ID', 'Chain ID', 'Ligand ID', 'Residue ID', 'PDB_ins_code', 'Ring Type', 'Resolution', 'Ring Coverage',
                         'Ring Coverage Float', 'Ring Coverage (%)', 'Conformation', 'conf_main_type', 'Experimental Method',
                         'averageLigandRSR', 'averageLigandRSCC']
     df = df[new_column_order]
-    new_column_names = ['pdb_id', 'chain_id', 'ccd_id', 'residue_id', 'PDB_ins_code', 'ring_type', 'resolution', 'ring_coverage_counts',
+    new_column_names = ['pdb_id', 'extended_PDB_ID', 'chain_id', 'ccd_id', 'residue_id', 'PDB_ins_code', 'ring_type', 'resolution', 'ring_coverage_counts',
                         'ring_coverage_float', 'ring_coverage', 'conformation', 'conf_main_type', 'experimental_method', 'rsr',
                         'rscc']
     df.columns = new_column_names
@@ -403,13 +411,13 @@ def add_metadata_from_cif(df, pdb_dir, methods_info: Path):
         old = pd.read_csv(methods_info, sep="\t")
         metadata = dict(
             zip(
-                old["PDB ID"],
+                old["extended_PDB_ID"],
                 zip(old["Experimental Method"], old["Resolution"])
             )
         )
 
     # extract missing entries
-    missing = set(df["PDB ID"]) - set(metadata)
+    missing = set(df["extended_PDB_ID"]) - set(metadata)
 
     if missing:
         missing_metadata = {}
@@ -428,7 +436,7 @@ def add_metadata_from_cif(df, pdb_dir, methods_info: Path):
 
         # overwrite metadata file with updated content
         with open(methods_info, "a") as f:
-            f.write("PDB ID\tExperimental Method\tResolution\n")
+            f.write("extended_PDB_ID\tExperimental Method\tResolution\n")
             for pdb_id, (method, res) in missing_metadata.items():
                 f.write(f"{pdb_id}\t{method}\t{res}\n")
 
@@ -436,7 +444,7 @@ def add_metadata_from_cif(df, pdb_dir, methods_info: Path):
         logger.info("All metadata already available.")
 
     df[["Experimental Method", "Resolution"]] = (
-        df["PDB ID"].map(metadata).apply(pd.Series)
+        df["extended_PDB_ID"].map(metadata).apply(pd.Series)
     )
 
     return df
