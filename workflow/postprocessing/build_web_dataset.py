@@ -296,7 +296,7 @@ def format_methods(df):
         ) if pd.notna(x) else x
     )
     counts = df['experimental_method'].value_counts()
-    print(counts)
+    logger.info(counts)
 
 
 def check_for_duplicates(df, output_dir):
@@ -323,42 +323,10 @@ def check_for_duplicates(df, output_dir):
         return df
 
 
-def combine_with_valtrends_data(df, path_to_valtrends_data):
-    logger.info(f"Combining with valtrends data")
-    valtrends_df = pd.read_csv(
-        path_to_valtrends_data,
-        sep=";",
-        usecols=["PDB ID", "averageLigandRSCC", "averageLigandRSR"]
-    )
-
-    valtrends_df["PDB ID"] = (
-    valtrends_df["PDB ID"]
-    .astype(str)
-    .str.replace('"', '')
-    .str.strip()
-    .str.lower()
-    # .radd("pdb_0000") # temp
-)
-
-    combined_df = df.merge(
-        valtrends_df,
-        on="PDB ID",
-        how="left"  # keep all rows from all_rings_df, add matches from valtrends_df
-    )
-
-    return combined_df
-
-
 def reformat_final_data(df):
     logger.info(f"Reformatting final data")
     df.set_index('id', inplace=True)
     df = df.sort_index()
-
-    df['averageLigandRSCC'] = df['averageLigandRSCC'].round(3)
-    df['averageLigandRSR'] = df['averageLigandRSR'].round(2)
-
-    df['averageLigandRSCC'] = df['averageLigandRSCC'].fillna('N/A').astype(str)
-    df['averageLigandRSR'] = df['averageLigandRSR'].fillna('N/A').astype(str)
 
     df["Resolution"] = (
         pd.to_numeric(df["Resolution"].replace(".", np.nan), errors="coerce")
@@ -368,12 +336,12 @@ def reformat_final_data(df):
     )
 
     new_column_order = ['PDB ID', 'extended_PDB_ID', 'Chain ID', 'Ligand ID', 'Residue ID', 'PDB_ins_code', 'Ring Type', 'Resolution', 'Ring Coverage',
-                        'Ring Coverage Float', 'Ring Coverage (%)', 'Conformation', 'conf_main_type', 'Experimental Method',
-                        'averageLigandRSR', 'averageLigandRSCC']
+                        'Ring Coverage Float', 'Ring Coverage (%)', 'Conformation', 'conf_main_type', 'Experimental Method'
+                        ]
     df = df[new_column_order]
     new_column_names = ['pdb_id', 'extended_PDB_ID', 'chain_id', 'ccd_id', 'residue_id', 'PDB_ins_code', 'ring_type', 'resolution', 'ring_coverage_counts',
-                        'ring_coverage_float', 'ring_coverage', 'conformation', 'conf_main_type', 'experimental_method', 'rsr',
-                        'rscc']
+                        'ring_coverage_float', 'ring_coverage', 'conformation', 'conf_main_type', 'experimental_method'
+                        ]
     df.columns = new_column_names
 
     format_methods(df)
@@ -434,6 +402,8 @@ def add_metadata_from_cif(df, pdb_dir, methods_info: Path):
                 )
                 missing_metadata[pdb_id] = (method, res)
 
+        metadata.update(missing_metadata)
+
         # overwrite metadata file with updated content
         with open(methods_info, "a") as f:
             f.write("extended_PDB_ID\tExperimental Method\tResolution\n")
@@ -450,7 +420,7 @@ def add_metadata_from_cif(df, pdb_dir, methods_info: Path):
     return df
             
 
-def create_data_for_web(output_dir: Path, main_dir: Path, pdb_dir: Path, valtrends_data_path: Path, methods_info: Path):
+def create_data_for_web(output_dir: Path, main_dir: Path, pdb_dir: Path, methods_info: Path):
     final_output_path = output_dir / "web"
     final_output_path.mkdir(parents=True, exist_ok=True)
     stats_json_path = final_output_path / "stats.json"
@@ -469,8 +439,7 @@ def create_data_for_web(output_dir: Path, main_dir: Path, pdb_dir: Path, valtren
         all_rings.append(format_ring_df(ring_df))
 
     all_rings_df = pd.concat(all_rings, ignore_index=False)
-    combined_df = combine_with_valtrends_data(all_rings_df, valtrends_data_path)
-    complete_df = add_metadata_from_cif(combined_df, pdb_dir, methods_info)
+    complete_df = add_metadata_from_cif(all_rings_df, pdb_dir, methods_info)
     reformatted_df = reformat_final_data(complete_df)
     final_df = check_for_duplicates(reformatted_df, final_output_path)
     create_json(final_df, stats_json_path)

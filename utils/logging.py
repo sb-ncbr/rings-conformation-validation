@@ -40,16 +40,3 @@ def setup_logging(log_dir: Path):
     root_logger.addHandler(workflow_handler)
     root_logger.addHandler(console_handler)
 
-
-    validation_logger = logging.getLogger("validation")
-    validation_logger.setLevel(logging.WARNING)
-    validation_logger.propagate = False
-
-    validation_handler = logging.FileHandler(
-        log_dir / f"validation_{timestamp}.log"
-    )
-    validation_handler.setLevel(logging.WARNING)
-    validation_handler.setFormatter(formatter)
-
-    validation_logger.addHandler(validation_handler)
-    validation_logger.addHandler(console_handler)

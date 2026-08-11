@@ -8,7 +8,6 @@ class WorkflowConfig:
     output_dir: Path
     pdb_dir: Path
     ccd: Path
-    valtrends_file: Path
 
     @property
     def density_dir(self) -> Path:
@@ -43,6 +42,5 @@ def load_config(filename="config.yaml"):
     return WorkflowConfig(
         output_dir=Path(data["output_dir"]),
         pdb_dir=Path(data["pdb_dir"]),
-        ccd=Path(data["ccd"]),
-        valtrends_file=Path(data["valtrends_file"])
+        ccd=Path(data["ccd"])
     )

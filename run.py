@@ -1,4 +1,3 @@
-import os
 import time
 import traceback
 import logging
@@ -10,7 +9,6 @@ from utils.config import load_config
 from utils.logging import setup_logging
 from workflow.data_acquisition.download import download_ccp4_with_retries
 from workflow.postprocessing.build_web_dataset import create_data_for_web
-from workflow.data_acquisition.generate_density_map import run_ccp4_generation
 from workflow.preprocessing.rings_filtering import filter_rings
 from workflow.utils.timing import ExecutionTimer, timed_step
 
@@ -41,14 +39,11 @@ def main():
         with timed_step(timer, "Download density maps"):
             download_ccp4_with_retries(config.density_dir, config.main_dir)
 
-        # with timed_step(timer, "CCP4 maps generation"):
-        #     run_ccp4_generation(config.main_dir, config.pdb_dir, config.density_dir)
-
         with timed_step(timer, "Electron density coverage"):
             analyse_coverage(config.main_dir, config.density_dir, False, False)
 
         with timed_step(timer, "Build web dataset"):
-            create_data_for_web(config.output_dir, config.main_dir, config.pdb_dir, config.valtrends_file, config.methods_info)
+            create_data_for_web(config.output_dir, config.main_dir, config.pdb_dir, config.methods_info)
 
         logger.info("Workflow completed successfully")
 

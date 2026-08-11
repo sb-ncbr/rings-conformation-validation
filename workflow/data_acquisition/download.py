@@ -21,7 +21,8 @@ def load_json(filename):
     return set()
 
 
-def save_to_json(data: Set, filename):
+def save_to_json(data: Set, filename: Path):
+    filename.parent.mkdir(parents=True, exist_ok=True)
     with open(filename, "w") as f:
         json.dump(sorted(data), f, indent=2)
 
@@ -118,14 +119,14 @@ def download_density_maps(ccp4_dir: Path, main_dir: Path):
 
         filtered_names.append(pdb)
 
-    logger.info(f'Not found: {len(not_found)}')
+    logger.info(f'Not found previously: {len(not_found)}')
     logger.info(f'Already existing: {already_exists}')
     logger.info(f"{len(filtered_names)} files will be processed...")
 
     results = download_many(filtered_names, not_found, out_dir=ccp4_dir, max_workers=32)
 
-    logger.info(f"Downloaded: {results["success"]}")
-    logger.info(f"Not found: {results["not_found"]}")
+    logger.info(f"Downloaded now: {results["success"]}")
+    logger.info(f"Not found now: {results["not_found"]}")
     logger.info(f"Failed now: {results["failed"]}")
 
     return results["failed"]

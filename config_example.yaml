@@ -6,6 +6,3 @@ pdb_dir: /path/to/pdb
 
 # Path to the Chemical Component Dictionary (.cif.gz)
 ccd: /path/to/ccd
-
-# Path to data.csv from https://valtrendsdb.biodata.ceitec.cz/download.php
-valtrends_file: /path/to/data
