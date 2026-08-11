@@ -96,45 +96,12 @@ def get_data_from_cif(ligand_block: gemmi.cif.Block):
 
     return bond_df, atom_df
 
-#TEMP
-def add_missing_fields(path):
-    lines = path.read_text().splitlines()
-
-    # fast check if already fixed
-    if any(line.strip() == "_atom_site.auth_seq_id" for line in lines):
-        return  # already contains the fields
-
-    output = []
-    in_atom_loop = False
-
-    for line in lines:
-        if line.startswith("_atom_site."):
-            if line == "_atom_site.pdbx_PDB_model_num":
-                output.append("_atom_site.auth_seq_id")
-                output.append("_atom_site.auth_asym_id")
-            output.append(line)
-            continue
-
-        if line.startswith(("ATOM", "HETATM")):
-            fields = line.split()
-
-            # label_asym_id and label_seq_id
-            label_asym = fields[6]
-            label_seq = fields[8]
-
-            # insert before model number
-            fields.insert(-1, label_seq)
-            fields.insert(-1, label_asym)
-
-            output.append(" ".join(fields))
-        else:
-            output.append(line)
-
-    path.write_text("\n".join(output) + "\n")
-
 
 def get_atom_names(cif_file):
-    ring_structure = gemmi.read_structure(str(cif_file))
+    with open(cif_file, encoding="utf-8-sig") as f:
+        data = f.read()
+    
+    ring_structure = gemmi.read_structure_string(data, format=gemmi.CoorFormat.Mmcif,)
     model = ring_structure[0]
     chain = model[0]
     res = chain[0]

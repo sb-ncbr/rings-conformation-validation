@@ -1,5 +1,4 @@
 import logging
-
 from Bio.PDB import NeighborSearch, MMCIFParser
 import numpy as np
 from glob import glob
@@ -137,13 +136,6 @@ def order_ring_by_heteroatom(atoms, hetero_targets):
     
     hetero_atom = hets[0]
 
-    # print([(a.name, a.element, a.coord) for a in atoms])
-
-    # print("hets:", [(a.name, a.element) for a in hets])
-    # print("chosen:", hetero_atom.name)
-    # print("neighbors:", [(x.name, np.linalg.norm(hetero_atom.coord-x.coord)) 
-    #                     for x in atoms if x != hetero_atom])
-
     adjacency = {a: [] for a in atoms}
     for i, a in enumerate(atoms):
         for j, b in enumerate(atoms):
@@ -196,7 +188,8 @@ def calculate_HR_heterocycles(atoms):
 #main logic
 def calculate_hr_angles_from_cif(file, ring):
     #generalized input handling for ring w and w/o heteroatoms
-    atoms = [atom for atom in MMCIFParser(QUIET=True).get_structure("structure", file)[0].get_atoms() if atom.element != "H"]
+    with open(file, encoding="utf-8-sig") as f:
+        atoms = [atom for atom in MMCIFParser(auth_chains=False, auth_residues=False, QUIET=True).get_structure("structure", f)[0].get_atoms() if atom.element != "H"]
     if len(atoms) < 5:
         raise ValueError("Too few atoms to form ring")
 

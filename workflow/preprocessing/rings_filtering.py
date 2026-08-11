@@ -9,7 +9,7 @@ from gemmi import cif
 from pathlib import Path
 from workflow.models.Ring import Ring
 from workflow.preprocessing.rings_classification import classify_ring
-from workflow.utils.helpers import add_missing_fields, get_atom_names, get_data_from_cif
+from workflow.utils.helpers import get_atom_names, get_data_from_cif
 
 
 logger = logging.getLogger(__name__)
@@ -55,12 +55,6 @@ def filter_by_bond_type(
         if str(cif_filepath) not in to_process:
             continue
 
-        # remove BOM for subsequent gemmi processing
-        data = cif_filepath.read_bytes()
-        if data.startswith(b"\xef\xbb\xbf"):
-            cif_filepath.write_bytes(data[3:])
-
-        add_missing_fields(cif_filepath)
         atom_names = get_atom_names(cif_filepath)
 
         key = (ligand, frozenset(atom_names))

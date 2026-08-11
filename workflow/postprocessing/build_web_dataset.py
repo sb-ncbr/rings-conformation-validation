@@ -207,10 +207,8 @@ def update_ring_columns(df, ring: Ring):
         .fillna("")
     )
 
-    df["PDB ID"].rename = df["PDB ID"]
-
     df["id"] = (
-    df["PDB ID"].astype(str) + "_" +
+    df["extended_PDB_ID"].astype(str) + "_" +
     df["Chain ID"].astype(str) + "_" +
     df["Ligand ID"].astype(str) + "_" +
     df["Residue ID"].astype(str) +
@@ -405,10 +403,23 @@ def add_metadata_from_cif(df, pdb_dir, methods_info: Path):
         metadata.update(missing_metadata)
 
         # overwrite metadata file with updated content
-        with open(methods_info, "a") as f:
-            f.write("extended_PDB_ID\tExperimental Method\tResolution\n")
-            for pdb_id, (method, res) in missing_metadata.items():
-                f.write(f"{pdb_id}\t{method}\t{res}\n")
+        metadata_df = pd.DataFrame(
+            [
+                (pdb_id, method, res)
+                for pdb_id, (method, res) in metadata.items()
+            ],
+            columns=[
+                "extended_PDB_ID",
+                "Experimental Method",
+                "Resolution",
+            ],
+        )
+
+        metadata_df.to_csv(
+            methods_info,
+            sep="\t",
+            index=False,
+        )
 
     else:
         logger.info("All metadata already available.")

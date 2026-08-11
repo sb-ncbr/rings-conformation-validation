@@ -86,7 +86,10 @@ def get_intensity(pos, map, closest_voxel):
 
 def get_coverage(dens_map, ring_path: Path, sigma_lvl, more_or_equal, closest_voxel):
     # we process only one ring in pdb format, so there is only one model, one chain and one residue
-    ring_structure = gemmi.read_structure(str(ring_path.resolve()))
+    with open(ring_path, encoding="utf-8-sig") as f:
+        data = f.read()
+        
+    ring_structure = gemmi.read_structure_string(data, format=gemmi.CoorFormat.Mmcif)
     model = ring_structure[0]
     chain = model[0]
     res = chain[0]
