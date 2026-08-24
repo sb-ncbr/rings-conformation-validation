@@ -173,7 +173,11 @@ def calculate_HR_heterocycles(atoms):
 
 
     #shift the sorted atoms to the right position 
-    sorted_atoms = sorted_atoms[-2:] + sorted_atoms[:-2]
+    if N == 5:
+        sorted_atoms = sorted_atoms[-2:] + sorted_atoms[:-2]
+    else:
+        sorted_atoms = sorted_atoms[1:] + sorted_atoms[:1]
+
     #ensures cyclic wrapping
     working_atoms = sorted_atoms + sorted_atoms[:3]
 
