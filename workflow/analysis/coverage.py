@@ -156,7 +156,7 @@ def split_into_subsets(parent_csv_path, main_dir, filename_stem):
         logger.info(f"Exporting to {res_path}")
 
 
-def analyse_coverage(main_dir: str, ccp4_dir: str, more_or_equal: bool, closest_voxel: bool):
+def analyse_coverage(main_dir: Path, ccp4_dir: Path, more_or_equal: bool, closest_voxel: bool):
     logger.info(f"Starting...")
     try:
         params = ''
