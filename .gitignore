@@ -1,9 +1,7 @@
 .idea
 .vs
 .vscode
-venv/
 .venv/
-*.txt
 *.csv
 *.cif
 *.html
@@ -13,4 +11,3 @@ venv/
 *.zip
 *.png
 __pycache__/
-HelperModule/__pycache__

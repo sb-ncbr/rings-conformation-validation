@@ -1,0 +1,64 @@
+﻿== 1.1.25.8.19 ==
+* Fixed a bug in the Near query.
+
+== 1.1.23.12.27 ==
+* Fixed a bug in the mmCIF parser.
+
+== 1.1.21.12.14 ==
+* Fixed bug in mmCIF parser.
+
+== 1.1.17.5.30 ==
+* Fixed a bug in Near and Cluster queries.
+
+== 1.1.16.8.12 ==
+* Fixed a bug in "SelectMany" query that could sometimes yield duplicate patterns.
+
+== 1.1.16.7.11 ==
+* Added Spherify query.
+
+== 1.1.15.7.28 ==
+* Added queries DistanceCluster and EmptySpace.
+
+== 1.1.15.4.22 ==
+* Renamed the executable to 'WebChemistry.Queries.Service'.
+* Renamed 'fragment' to 'pattern'.
+
+== 1.1.15.4.19 ==
+* Added support for user notification.
+
+== 1.1.15.1.7 ==
+* Added support for 'ModifiedResidues'.
+
+== 1.1.14.12.23 ==
+* Added 'readme.txt' describing the output structure to the generated output.
+
+== 1.1.14.12.17 ==
+* Added the 'SeqCount' query.
+
+== 1.1.14.12.15 ==
+* Renamed 'motif' to 'fragment'.
+
+== 1.1.14.11.28 ==
+* Changes in PDB parser - atom names no longer need to be unique per each residue.
+
+== 1.1.14.11.6 ==
+* Improved rings support.
+
+== 1.1.14.11.5 ==
+* Various bugfixes.
+
+== 1.1.14.11.1 ==
+* Data model tweak.
+
+== 1.1.14.10.28 ==
+* Included max atom limit for hosted queries.
+
+== 1.1.14.10.18 ==
+* Better support for metadata.
+
+== 1.1.14.10.9 ==
+* Added a warning for parsing PDB/mmCIF files regarding different names on a single residue.
+
+== 1.0.14.8.27 ==
+* Added nucleotide mode for regular motifs.
+* Renamed function/variable names that contained "motive" to "motif".
