@@ -1,7 +1,9 @@
 # Workflow for validation of rings' conformation in ligands
 
 ## Description
-This repository contains the new release of software workflow from the article by Bučeková *et al.* *Analysis of cyclopentane, cyclohexane, and benzene conformations in ligands for PDB x-ray structures* that has been submitted to the Journal of Cheminformatics.
+The original software workflow is from the article by Bučeková *et al.* *Analysis of cyclopentane, cyclohexane, and benzene conformations in ligands for PDB x-ray structures using the Hill-Reilly approach* that has been submitted to the Journal of Cheminformatics.
+
+Current release contains an apdated software workflow from the article by Doshchenko *et al.* *RingPDB: a web application for exploration of ring conformations in non-standard residues from the Protein Data Bank* that has been submitted to the Journal of Cheminformatics.
 
 
 ## Prerequisites
